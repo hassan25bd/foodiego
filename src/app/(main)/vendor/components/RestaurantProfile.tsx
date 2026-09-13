@@ -1,973 +1,556 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useForm, Controller, useWatch } from "react-hook-form";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import * as THREE from "three";
 import {
-  User,
-  Save,
-  X,
-  Globe,
-  Phone,
-  Mail,
-  Upload,
-  Tag,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  MapPin,
-  Star,
-  Sparkles,
+  ChefHat, Star, ShoppingBag, TrendingUp, MapPin, Clock, Phone, Edit3, Camera, CheckCircle2, ShieldCheck, Sparkles, Utensils, Plus, Share2, Sliders, Volume2, VolumeX, Save, X, Award, Info, MessageSquare,
 } from "lucide-react";
-import dynamic from "next/dynamic";
-import { useVendorProfile, useUpdateVendorProfile } from "@/hooks/useVendorProfile";
-import type { RestaurantProfile } from "@/hooks/useVendorProfile";
-import { useVendorSocket } from "@/hooks/useVendorSocket";
 
-const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-const ProfileMap = dynamic(() => import("@/app/(main)/vendor/components/ProfileMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full animate-pulse rounded-2xl bg-gray-200" />
-  ),
-});
-
-const glassCard =
-  "relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md";
-
-const inputClasses =
-  "w-full rounded-xl border border-gray-300/50 bg-white/50 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200 backdrop-blur-sm transition-all";
-
-export default function RestaurantProfile() {
-  const { data: profile, isLoading, isError } = useVendorProfile();
-  const { mutate: updateProfile, isPending: isSaving } = useUpdateVendorProfile();
-  const { isConnected } = useVendorSocket();
-
-  const [hasChanges, setHasChanges] = useState(false);
-  const [blobPositions] = useState(() =>
-    Array.from({ length: 5 }, () => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-    }))
-  );
-
-  const { control, handleSubmit, reset, setValue } = useForm<RestaurantProfile>({
-    defaultValues: profile || undefined,
-  });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File size must be less than 5MB");
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-    setValue("tradeLicenseUrl", objectUrl);
-    setValue("ownerNidUrl", objectUrl);
-    setHasChanges(true);
-  };
-
-  const packagingFeeEnabled = useWatch({ control, name: "packagingFeeEnabled" });
-  const storeStatus = useWatch({ control, name: "storeStatus" });
-
-  const handleSave = handleSubmit(async (data) => {
-    await updateProfile(data);
-    setHasChanges(false);
-  });
-
-  const handleDiscard = () => {
-    if (profile) {
-      reset(profile);
-    }
-    setHasChanges(false);
-  };
-
-  const handleToggleStore = () => {
-    setValue("storeStatus", storeStatus === "open" ? "closed" : "open");
-    setHasChanges(true);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="relative h-full min-h-[400px] w-full overflow-hidden rounded-[2rem] bg-gradient-to-br from-gray-100 to-gray-200" />
-    );
+interface SoundEngine {
+  ctx: AudioContext | null;
+  enabled: boolean;
+  init(): void;
+  playPop(): void;
+  playClick(): void;
+}
+class SoundEngineImpl implements SoundEngine {
+  ctx: AudioContext | null;
+  enabled: boolean;
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
   }
-
-  if (isError || !profile) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center"
-      >
-        <AlertCircle size={32} className="mx-auto mb-3 text-rose-400" />
-        <p className="text-sm text-rose-700">Unable to load restaurant profile.</p>
-      </motion.div>
-    );
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
   }
+  playPop() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(340, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(680, this.ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.07);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.07);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  playClick() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(480, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(240, this.ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.05);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
 
-  const currentDay = new Date().toLocaleString("en-US", { weekday: "long" });
-  const categoryTags = ["Burgers", "Fast Food", "Asian Fusion", "Desserts"];
+const sounds = new SoundEngineImpl();
 
+const Interactive3DScene = () => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 15;
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+    const group = new THREE.Group();
+    scene.add(group);
+    interface Item {
+      mesh: THREE.Mesh;
+      rotSpeedX: number;
+      rotSpeedY: number;
+      floatSpeed: number;
+      initialY: number;
+    }
+    const items: Item[] = [];
+    const geometries = [
+      new THREE.IcosahedronGeometry(1.2, 0),
+      new THREE.TorusGeometry(1, 0.35, 16, 100),
+      new THREE.OctahedronGeometry(1, 0),
+      new THREE.DodecahedronGeometry(0.9, 0),
+    ];
+    const colors = [0xea580c, 0xf59e0b, 0x10b981, 0x3b82f6, 0x8b5cf6, 0xf43f5e];
+    for (let i = 0; i < 22; i++) {
+      const geom = geometries[Math.floor(Math.random() * geometries.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const mat = new THREE.MeshPhysicalMaterial({
+        color: color,
+        metalness: 0.2,
+        roughness: 0.15,
+        transmission: 0.85,
+        opacity: 0.8,
+        transparent: true,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        wireframe: Math.random() > 0.7,
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.x = (Math.random() - 0.5) * 38;
+      mesh.position.y = (Math.random() - 0.5) * 24;
+      mesh.position.z = (Math.random() - 0.5) * 16 - 4;
+      mesh.rotation.x = Math.random() * Math.PI;
+      mesh.rotation.y = Math.random() * Math.PI;
+      const scale = 0.5 + Math.random() * 0.9;
+      mesh.scale.set(scale, scale, scale);
+      group.add(mesh);
+      items.push({
+        mesh,
+        rotSpeedX: (Math.random() - 0.5) * 0.012,
+        rotSpeedY: (Math.random() - 0.5) * 0.012,
+        floatSpeed: 0.004 + Math.random() * 0.008,
+        initialY: mesh.position.y,
+      });
+    }
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    scene.add(ambientLight);
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight1.position.set(10, 20, 15);
+    scene.add(dirLight1);
+    const pointLight = new THREE.PointLight(0xea580c, 3.5, 35);
+    pointLight.position.set(-10, -10, 10);
+    scene.add(pointLight);
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetX = 0;
+    let targetY = 0;
+    const handleMouseMove = (e: MouseEvent) => {
+      const { innerWidth, innerHeight } = window;
+      mouseX = (e.clientX - innerWidth / 2) / (innerWidth / 2);
+      mouseY = (e.clientY - innerHeight / 2) / (innerHeight / 2);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    let animationFrameId: number;
+    const clock = new THREE.Clock();
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
+      targetX += (mouseX - targetX) * 0.05;
+      targetY += (mouseY - targetY) * 0.05;
+      group.rotation.y = targetX * 0.25;
+      group.rotation.x = -targetY * 0.25;
+      items.forEach((item, idx) => {
+        item.mesh.rotation.x += item.rotSpeedX;
+        item.mesh.rotation.y += item.rotSpeedY;
+        item.mesh.position.y = item.initialY + Math.sin(elapsedTime * 1.5 + idx) * 0.5;
+      });
+      renderer.render(scene, camera);
+    };
+    animate();
+    const handleResize = () => {
+      if (!container) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(animationFrameId);
+      if (container && renderer.domElement) {
+        container.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="relative min-h-screen w-full overflow-hidden"
-    >
-      {/* ================= LIVE ANIMATED BACKGROUND ================= */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <motion.div
-          className="absolute -top-1/2 -left-1/2 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-emerald-400/30 via-teal-300/20 to-cyan-300/20 blur-3xl"
-          animate={{
-            x: [0, 50, 0, -50, 0],
-            y: [0, 30, 0, -30, 0],
-            scale: [1, 1.1, 0.95, 1.1, 1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute -bottom-1/2 -right-1/2 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-amber-400/25 via-rose-300/15 to-pink-300/20 blur-3xl"
-          animate={{
-            x: [0, -30, 0, 30, 0],
-            y: [0, -20, 0, 20, 0],
-            scale: [1, 0.95, 1.1, 0.95, 1],
-          }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute top-1/4 left-1/3 h-[300px] w-[300px] rounded-full bg-gradient-to-r from-indigo-400/20 via-purple-300/15 to-violet-300/20 blur-2xl"
-          animate={{
-            x: [0, 20, 0, -20, 0],
-            y: [0, -15, 0, 15, 0],
-            opacity: [0.5, 0.7, 0.5, 0.7, 0.5],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        />
+    <div ref={containerRef} className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-50" />
+  );
+};
 
-        {/* Particle grid */}
-        <div className="absolute inset-0 opacity-[0.03]">
-          <svg width="100%" height="100%">
-            {Array.from({ length: 15 }).map((_, i) =>
-              Array.from({ length: 15 }).map((_, j) => {
-                const x = (i + 1) * (1200 / 15);
-                const y = (j + 1) * (800 / 15);
-                return (
-                  <motion.circle
-                    key={`${i}-${j}`}
-                    cx={x}
-                    cy={y}
-                    r="1"
-                    fill="currentColor"
-                    initial={{ opacity: 0.3, scale: 1 }}
-                    animate={{
-                      opacity: [0.3, 0.6, 0.3],
-                      scale: [1, 1.5, 1],
-                    }}
-                    transition={{
-                      duration: 3 + (i + j) * 0.1,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                );
-              })
+interface Metric3DProps {
+  title: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subtext: string;
+  glowColor: string;
+  accentGradient: string;
+}
+
+const Metric3DCard = ({ title, value, icon: Icon, subtext, glowColor, accentGradient }: Metric3DProps) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = -((y - centerY) / centerY) * 12;
+    const rotateY = ((x - centerX) / centerX) * 12;
+    setTilt({ x: rotateX, y: rotateY });
+  };
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    sounds.playPop();
+  };
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => sounds.playClick()}
+      style={{ perspective: "1000px" }}
+      className="cursor-pointer group"
+    >
+      <div
+        style={{
+          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(${isHovered ? "20px" : "0px"})`,
+          transition: isHovered ? "transform 0.1s ease-out" : "transform 0.5s ease-out, box-shadow 0.5s ease-out",
+        }}
+        className="relative overflow-hidden rounded-3xl p-6 backdrop-blur-xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 shadow-xl hover:shadow-2xl transition-all duration-300 transform-gpu"
+      >
+        <div className={`absolute -right-10 -top-10 w-36 h-36 rounded-full blur-3xl opacity-30 group-hover:opacity-75 transition-opacity duration-500 ${glowColor}`} />
+        <div className="flex items-center gap-4 relative z-10">
+          <div className={`p-4 rounded-2xl ${accentGradient} text-white shadow-lg flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300`}>
+            <Icon className="w-6 h-6 stroke-[2.5]" />
+          </div>
+          <div>
+            <h4 className="text-2xl lg:text-3xl font-black text-slate-800 dark:text-white tracking-tight">{value}</h4>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mt-0.5">{title}</p>
+            {subtext && (
+              <span className="inline-block text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">{subtext}</span>
             )}
-          </svg>
+          </div>
         </div>
       </div>
+    </div>
+  );
+};
 
-      {blobPositions.length > 0 &&
-        blobPositions.map((pos, i) => (
-          <motion.div
-            key={i}
-            className="fixed -z-10 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl"
-            style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
-            animate={{
-              opacity: [0.1, 0.15, 0.1],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: 8 + i * 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-
-      {/* ================= CONTENT LAYOUT ================= */}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8">
-        <motion.form
-          onSubmit={handleSave}
-          className="w-full space-y-8"
-        >
-          {/* ================= IMMERSIVE 3D HERO SHOWCASE ================= */}
-          <motion.div
-            initial={{ opacity: 0, y: 30, rotateX: -15 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="relative rounded-[2.5rem] border border-white/30 bg-white/70 shadow-2xl backdrop-blur-xl"
-            style={{ perspective: "1000px" }}
-          >
-            <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald-500/10 via-transparent to-amber-500/10 opacity-60 blur-xl" />
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-100 to-transparent opacity-40" />
-            <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/3 h-32 w-32 rounded-full bg-gradient-to-br from-amber-100 to-transparent opacity-30" />
-
-            <div className="relative p-8">
-              {/* Floating 3D Avatar with Glowing Pulse Ring */}
-              <motion.div
-                className="absolute -top-12 left-8 z-10"
-                style={{ perspective: "800px" }}
-                whileHover={{ rotateY: 5, rotateX: 5, scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <motion.div
-                  className="relative h-28 w-28 rounded-full border-4 border-white shadow-2xl"
-                  animate={{
-                    boxShadow: [
-                      "0 0 0 0px rgba(16, 185, 129, 0.5)",
-                      "0 0 0 12px rgba(16, 185, 129, 0)",
-                      "0 0 0 0px rgba(16, 185, 129, 0.5)",
-                    ],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={profile.logoUrl || "/placeholder-logo.svg"}
-                    alt={profile.name}
-                    className="h-full w-full rounded-full object-cover"
-                  />
-                  <motion.div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 60%)",
-                    }}
-                  />
-                </motion.div>
-                <motion.div
-                  className="absolute -bottom-1 -right-1 rounded-full bg-emerald-500 p-1.5 shadow-lg"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                >
-                  <Star size={14} className="text-white" />
-                </motion.div>
-              </motion.div>
-
-              {/* Header Content */}
-              <div className="ml-32 flex flex-col">
-                <div className="flex items-center gap-4">
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    {profile.name || "FoodieGo Restaurant"}
-                  </h1>
-
-                  {/* Store Status Toggle */}
-                  <motion.button
-                    type="button"
-                    onClick={handleToggleStore}
-                    className="relative inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
-                    style={{
-                      background:
-                        storeStatus === "open"
-                          ? "linear-gradient(135deg, #10b981, #059669)"
-                          : "linear-gradient(135deg, #9ca3af, #6b7280)",
-                    }}
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span
-                        className={`absolute inline-flex h-full w-full animate-ping rounded-full ${
-                          storeStatus === "open" ? "bg-white" : "bg-white/70"
-                        }`}
-                      />
-                      <span
-                        className={`relative inline-flex h-2 w-2 rounded-full ${
-                          storeStatus === "open" ? "bg-white" : "bg-white/70"
-                        }`}
-                      />
-                    </span>
-                    Store Status: {storeStatus === "open" ? "OPEN" : "CLOSED"}
-                  </motion.button>
+export default function RestaurantProfile() {
+  const [profile, setProfile] = useState({
+    name: "Abid Merchant",
+    restaurantName: "Truffle House Kitchen",
+    tagline: "Artisanal Fine Dining & Gourmet Fast Casual",
+    accountType: "Verified Merchant",
+    avatar: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400&auto=format&fit=crop&q=80",
+    cover: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80",
+    phone: "+1 (555) 382-9102",
+    email: "abid@foodiego.com",
+    address: "742 Evergreen Terrace, Downtown Culinary District",
+    hours: "10:00 AM - 11:00 PM (Mon-Sun)",
+    isActive: true,
+  });
+  const [activeTab, setActiveTab] = useState("menu");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ ...profile });
+  const [dishes] = useState([
+    { id: 1, name: "Truffle Wagyu Burger", category: "Burgers", price: "৳450", rating: "4.9", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80", badge: "Bestseller" },
+    { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&auto=format&fit=crop&q=80", badge: "Chef Choice" },
+    { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=500&auto=format&fit=crop&q=80", badge: "Fresh" },
+    { id: 4, name: "Matcha Souffle Pancake", category: "Desserts", price: "৳320", rating: "5.0", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80", badge: "Popular" },
+  ]);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+  const toggleSound = () => {
+    sounds.enabled = !soundEnabled;
+    setSoundEnabled(!soundEnabled);
+    sounds.playPop();
+  };
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    sounds.playPop();
+    setProfile({ ...formData });
+    setIsEditModalOpen(false);
+    showToast("Profile details updated successfully!");
+  };
+  const filteredDishes = selectedCategory === "All" ? dishes : dishes.filter((d) => d.category === selectedCategory);
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 relative font-sans transition-colors duration-300 overflow-x-hidden">
+      <Interactive3DScene />
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white shadow-2xl border border-amber-500/40 flex items-center gap-3 animate-bounce text-xs font-bold">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <header className="flex items-center justify-between p-4 lg:p-6 rounded-3xl bg-white/75 backdrop-blur-2xl border border-white/60 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+              <ChefHat className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-black tracking-tight text-slate-900">FoodieGo</h1>
+              <p className="text-xs font-medium text-slate-500">Merchant Interactive Profile</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleSound} className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" title="Toggle Audio FX">
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-500" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => { setIsEditModalOpen(true); sounds.playPop(); }}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xs shadow-md shadow-orange-500/30 hover:scale-[1.03] active:scale-95 transition-all flex items-center gap-2"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>Edit Details</span>
+            </button>
+          </div>
+        </header>
+        <section className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-2xl">
+          <div className="relative h-48 sm:h-64 w-full overflow-hidden">
+            <img src={profile.cover} alt="Cover" className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
+            <button
+              onClick={() => { setIsEditModalOpen(true); sounds.playPop(); }}
+              className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/60 backdrop-blur-md text-white text-xs font-bold hover:bg-slate-950/80 transition-all flex items-center gap-1.5 border border-white/20"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Change Cover</span>
+            </button>
+          </div>
+          <div className="relative px-6 pb-6 pt-0 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 -mt-16 sm:-mt-20">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
+              <div className="relative group">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-slate-800">
+                  <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
                 </div>
-
-                {/* Category Tags */}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {categoryTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100/60 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur-sm"
-                    >
-                      <Tag size={10} />
-                      {tag}
-                    </span>
-                  ))}
+                <div className="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-white" title="Store Status: OPEN" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{profile.restaurantName}</h2>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {profile.accountType}
+                  </span>
                 </div>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {profile.tagline || "Authentic flavors, delivered fast"}
+                <p className="text-sm font-semibold text-slate-600">
+                  {profile.tagline} • Manager: <strong className="text-slate-800">{profile.name}</strong>
                 </p>
-
-                {/* Live Status Badge */}
-                <div className="mt-3 flex items-center gap-4">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold ${
-                      isConnected
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-gray-100 text-gray-500 border border-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        isConnected ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-                      }`}
-                    />
-                    {isConnected ? "Live Updates" : "Offline"}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {profile.email || "restaurant@foodiego.com"}
-                  </span>
+                <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 pt-1 flex-wrap">
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-amber-500" /> {profile.address}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-emerald-500" /> {profile.hours}</span>
                 </div>
               </div>
             </div>
-
-            {/* Glowing border accent on focus */}
-            <motion.div
-              className="pointer-events-none absolute inset-0 rounded-[2.5rem]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: hasChanges ? 0.5 : 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="absolute inset-0 rounded-[2.5rem] border-2 border-emerald-400/50 opacity-0 shadow-[0_0_40px_theme(colors.emerald.400/40)]" />
-            </motion.div>
-          </motion.div>
-
-          {/* ================= MAIN GRID ================= */}
-          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[0.6fr_0.4fr]">
-            {/* LEFT COLUMN: Basic Information + Delivery Setup */}
-            <div className="space-y-8">
-              {/* Basic Information */}
-              <motion.div
-                initial={{ opacity: 0, x: -30, rotateY: -10 }}
-                animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className={glassCard}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+              <button onClick={() => showToast("Public menu share link copied!")} className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" title="Share Profile">
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
-                <div className="relative p-6 pb-3">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/30 via-transparent to-transparent opacity-50" />
-                  <h2 className="relative text-lg font-semibold text-gray-900">
-                    Basic Information
-                  </h2>
-                  <p className="relative text-xs text-gray-500">
-                    Edit your restaurant&apos;s core details
-                  </p>
-                </div>
-
-                <div className="relative p-6 pt-0 space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
-                        <User size={14} />
-                        Restaurant Name
-                      </label>
-                      <Controller
-                        control={control}
-                        name="name"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            className={inputClasses}
-                            placeholder="FoodieGo Restaurant"
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
-                        <Tag size={14} />
-                        Tagline
-                      </label>
-                      <Controller
-                        control={control}
-                        name="tagline"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            className={inputClasses}
-                            placeholder="Authentic flavors, delivered fast"
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
-                        <Phone size={14} />
-                        Phone Number
-                      </label>
-                      <Controller
-                        control={control}
-                        name="phone"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            className={inputClasses}
-                            placeholder="+880 1XXXXXXXXX"
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
-                        <Mail size={14} />
-                        Email Address
-                      </label>
-                      <Controller
-                        control={control}
-                        name="email"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="email"
-                            className={inputClasses}
-                            placeholder="restaurant@foodiego.com"
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
-                        <Globe size={14} />
-                        Website
-                      </label>
-                      <Controller
-                        control={control}
-                        name="website"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            className={inputClasses}
-                            placeholder="www.foodiego.com"
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Delivery Setup */}
-              <motion.div
-                initial={{ opacity: 0, x: -30, rotateY: -10 }}
-                animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className={glassCard}
-              >
-                <div className="relative p-6 pb-3">
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-100/30 via-transparent to-transparent opacity-50" />
-                  <h2 className="relative text-lg font-semibold text-gray-900">
-                    Delivery Setup & Pricing
-                  </h2>
-                  <p className="relative text-xs text-gray-500">
-                    Configure delivery fees and minimum order values
-                  </p>
-                </div>
-
-                <div className="relative p-6 pt-0 space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase">
-                        Minimum Order Value
-                      </label>
-                      <Controller
-                        control={control}
-                        name="minOrderValue"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="number"
-                            className={inputClasses}
-                            placeholder="৳150"
-                            onChange={(e) => {
-                              field.onChange(Number(e.target.value));
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase">
-                        Base Delivery Fee
-                      </label>
-                      <Controller
-                        control={control}
-                        name="deliveryFee"
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="number"
-                            className={inputClasses}
-                            placeholder="৳50"
-                            onChange={(e) => {
-                              field.onChange(Number(e.target.value));
-                              setHasChanges(true);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 flex items-center gap-4">
-                      <Controller
-                        control={control}
-                        name="packagingFeeEnabled"
-                        render={({ field: { value, onChange } }) => (
-                          <motion.label
-                            className="flex items-center gap-3 cursor-pointer"
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <motion.div
-                              className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors"
-                              style={{
-                                background: value
-                                  ? "linear-gradient(135deg, #10b981, #059669)"
-                                  : "#d1d5db",
-                              }}
-                              onClick={() => {
-                                onChange(!value);
-                                setHasChanges(true);
-                              }}
-                            >
-                              <motion.div
-                                className="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-lg"
-                                animate={{
-                                  x: value ? 36 : 4,
-                                }}
-                                transition={{
-                                  type: "spring",
-                                  stiffness: 500,
-                                  damping: 30,
-                                }}
-                              />
-                  </motion.div>
-                            <span className="text-sm font-medium text-gray-700">
-                              Packaging Fee Enabled
-                            </span>
-                          </motion.label>
-                        )}
-                      />
-
-                      {packagingFeeEnabled && (
-                        <Controller
-                          control={control}
-                          name="packagingFee"
-                          render={({ field }) => (
-                            <input
-                              {...field}
-                              type="number"
-                              className={`${inputClasses} w-32`}
-                              placeholder="৳15"
-                              onChange={(e) => {
-                                field.onChange(Number(e.target.value));
-                                setHasChanges(true);
-                              }}
-                            />
-                          )}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Document Vault */}
-              <motion.div
-                initial={{ opacity: 0, x: -30, rotateY: -10 }}
-                animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className={glassCard}
-              >
-                <div className="relative p-6 pb-3">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 via-transparent to-transparent opacity-50" />
-                  <h2 className="relative text-lg font-semibold text-gray-900">
-                    Document Vault (Verification)
-                  </h2>
-                  <p className="relative text-xs text-gray-500">
-                    Upload trade license and owner NID documents
-                  </p>
-                </div>
-
-                <div className="relative p-6 pt-0">
-                  <motion.div
-                    className="relative rounded-3xl border-2 border-dashed border-gray-300/50 bg-gray-50/50 p-10 text-center transition-all duration-300 hover:border-emerald-400 hover:bg-emerald-50/30"
-                    whileHover={{ scale: 1.01 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  >
-                    <div className="absolute inset-0 opacity-0 hover:opacity-10 transition-opacity duration-500">
-                      <div className="absolute top-1/4 left-1/3 h-1 w-1/3 rotate-45 rounded-full bg-emerald-400/30 blur" />
-                      <div className="absolute top-1/2 left-1/4 h-1 w-1/4 rounded-full bg-amber-400/30 blur" />
-                    </div>
-
-                    <div className="relative flex flex-col items-center">
-                      <motion.div
-                        className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-amber-500/20"
-                        animate={{ rotate: [0, 5, -5, 5, 0] }}
-                        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        <Upload size={32} className="text-emerald-600" />
-                      </motion.div>
-
-                      <p className="mt-4 text-sm font-medium text-gray-700">
-                        Drop your files here or click to upload
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Supported: PDF, JPG, PNG (Max 5MB each)
-                      </p>
-
-                      <ul className="mt-3 flex flex-wrap justify-center gap-2 text-xs text-gray-500">
-                        <li className="flex items-center gap-1">
-                          <FileText size={12} /> Trade License
-                        </li>
-                        <li className="flex items-center gap-1">
-                          <FileText size={12} /> Owner NID
-                        </li>
-                      </ul>
-
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      className="mt-4 rounded-xl border border-gray-300 bg-white/60 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-white/80 backdrop-blur-sm transition-all"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Choose Files
-                    </motion.button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                    </div>
-                  </motion.div>
-
-                  {profile.tradeLicenseUrl && (
-                    <motion.div
-                      className="mt-4 flex items-center gap-2 text-xs"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                    >
-                      <CheckCircle2 size={14} className="text-emerald-500" />
-                      <span className="text-gray-600">Trade License: Uploaded</span>
-                    </motion.div>
-                  )}
-                  {profile.ownerNidUrl && (
-                    <motion.div
-                      className="mt-2 flex items-center gap-2 text-xs"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.05 }}
-                    >
-                      <CheckCircle2 size={14} className="text-emerald-500" />
-                      <span className="text-gray-600">Owner NID: Uploaded</span>
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* RIGHT COLUMN: Map + Operating Hours */}
-            <div className="space-y-8">
-              {/* 3D Interactive Location Map */}
-              <motion.div
-                initial={{ opacity: 0, x: 30, rotateY: 10 }}
-                animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.6, delay: 0.25 }}
-                className={glassCard}
-              >
-                <div className="relative p-6 pb-3">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/30 via-transparent to-transparent opacity-50" />
-                  <h2 className="relative text-lg font-semibold text-gray-900">
-                    Delivery Coverage Map
-                  </h2>
-                  <p className="relative text-xs text-gray-500">
-                    Drag the pin to adjust your delivery zone origin
-                  </p>
-                </div>
-
-                <div className="relative p-6 pt-0">
-                  <motion.div
-                    className="relative h-64 w-full overflow-hidden rounded-2xl border border-gray-200/50 shadow-inner"
-                    whileHover={{ boxShadow: "0 20px 40px rgba(0,0,0,0.08)" }}
-                  >
-                    <ProfileMap
-                      lat={profile.latitude}
-                      lng={profile.longitude}
-                      address={profile.address}
-                      onLocationChange={(newLat, newLng) => {
-                        setValue("latitude", newLat);
-                        setValue("longitude", newLng);
-                        setHasChanges(true);
-                      }}
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    className="mt-4 flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-3 py-2 backdrop-blur-sm"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <MapPin size={14} className="text-emerald-600" />
-                    <Controller
-                      control={control}
-                      name="address"
-                      render={({ field }) => (
-                        <input
-                          {...field}
-                          className="flex-1 border-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
-                          placeholder="Physical address"
-                          onChange={(e) => {
-                            field.onChange(e.target.value);
-                            setHasChanges(true);
-                          }}
-                        />
-                      )}
-                    />
-                  </motion.div>
-                </div>
-              </motion.div>
-
-              {/* Operating Hours Matrix */}
-              <motion.div
-                initial={{ opacity: 0, x: 30, rotateY: 10 }}
-                animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.6, delay: 0.35 }}
-                className={glassCard}
-              >
-                <div className="relative p-6 pb-3">
-                  <div className="absolute inset-0 bg-gradient-to-br from-rose-100/30 via-transparent to-transparent opacity-50" />
-                  <h2 className="relative text-lg font-semibold text-gray-900">
-                    Operating Schedule
-                  </h2>
-                  <p className="relative text-xs text-gray-500">
-                    Set your restaurant&apos;s availability schedule
-                  </p>
-                </div>
-
-                <div className="relative p-6 pt-0 space-y-2">
-                  {daysOfWeek.map((day) => {
-                    const dayIndex = daysOfWeek.indexOf(day);
-                    const dayData = profile.operatingHours[dayIndex] || {
-                      day,
-                      isOpen: false,
-                      openTime: "10:00",
-                      closeTime: "22:00",
-                    };
-                    const isToday = day === currentDay;
-
-                    return (
-                      <motion.div
-                        key={day}
-                        className={`relative flex items-center gap-3 rounded-xl border p-3 transition-all ${
-                          isToday
-                            ? "border-emerald-500 bg-emerald-50/50 shadow-lg shadow-emerald-100/50"
-                            : "border-gray-200/50 bg-white/40 hover:bg-white/60 backdrop-blur-sm"
-                        }}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.05 * dayIndex }}
-                      >
-                        {isToday && (
-                          <motion.div
-                            className="absolute -left-1 top-1/2 -translate-y-1/2 h-4 w-1 rounded-full bg-emerald-500"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          />
-                        )}
-
-                        <div className="w-20 text-xs font-medium text-gray-700">
-                          {day.slice(0, 3)}
-                          {isToday && (
-                            <motion.span
-                              className="ml-1 text-emerald-500"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                            >
-                              •
-                            </motion.span>
-                          )}
-                        </div>
-
-                        <Controller
-                          control={control}
-                          name={`operatingHours.${dayIndex}.isOpen`}
-                          render={({ field: { value, onChange } }) => (
-                            <motion.label className="flex items-center cursor-pointer">
-                              <motion.div
-                                className="relative inline-flex h-6 w-12 items-center rounded-full"
-                                style={{
-                                  background: value
-                                    ? "linear-gradient(135deg, #10b981, #059669)"
-                                    : "#d1d5db",
-                                }}
-                                onClick={() => {
-                                  onChange(!value);
-                                  setHasChanges(true);
-                                }}
-                                animate={{ scale: [1, 1.1, 1] }}
-                                transition={{
-                                  duration: 0.3,
-                                  type: "tween",
-                                  stiffness: 500,
-                                  damping: 30,
-                                }}
-                              >
-                                <motion.div
-                                  className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow"
-                                  animate={{ x: value ? 24 : 4 }}
-                                  transition={{
-                                    type: "spring",
-                                    stiffness: 500,
-                                    damping: 30,
-                                  }}
-                            />
-                            </motion.div>
-                            </motion.label>
-                          )}
-                        />
-
-                        {dayData.isOpen && (
-                          <>
-                            <motion.input
-                              type="time"
-                              className="w-32 rounded-lg border border-gray-300/50 bg-white/50 px-3 py-1.5 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none transition-all"
-                              defaultValue={dayData.openTime}
-                              whileFocus={{ scale: 1.02 }}
-                              onChange={() => setHasChanges(true)}
-                            />
-                            <span className="text-gray-400">—</span>
-                            <motion.input
-                              type="time"
-                              className="w-32 rounded-lg border border-gray-300/50 bg-white/50 px-3 py-1.5 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none transition-all"
-                              defaultValue={dayData.closeTime}
-                              whileFocus={{ scale: 1.02 }}
-                              onChange={() => setHasChanges(true)}
-                            />
-                          </>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </motion.div>
+                <Sliders className="w-4 h-4" />
+                <span>Manage Store</span>
+              </button>
             </div>
           </div>
-
-          {/* ================= ACTION FOOTER ================= */}
-          <AnimatePresence>
-            {hasChanges && (
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 30, scale: 0.9 }}
-                className="fixed bottom-8 left-0 right-0 mx-auto flex justify-center"
-              >
-                <motion.div
-                  className="relative flex items-center gap-4 rounded-3xl border border-white/30 bg-white/80 px-8 py-4 shadow-2xl backdrop-blur-xl"
-                  style={{
-                    boxShadow:
-                      "0 8px 32px rgba(0, 0, 0, 0.08), 0 0 40px rgba(16, 185, 129, 0.2)",
-                  }}
+        </section>
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Metric3DCard title="Total Orders" value="1,284" icon={ShoppingBag} subtext="+14% this month" glowColor="bg-blue-500" accentGradient="bg-gradient-to-tr from-blue-500 to-indigo-600" />
+          <Metric3DCard title="Avg. Rating" value="4.8" icon={Star} subtext="Based on 490 reviews" glowColor="bg-amber-500" accentGradient="bg-gradient-to-tr from-amber-500 to-orange-600" />
+          <Metric3DCard title="Active Menu Items" value="24" icon={Utensils} subtext="4 Specials Featured" glowColor="bg-emerald-500" accentGradient="bg-gradient-to-tr from-emerald-500 to-teal-600" />
+          <Metric3DCard title="Monthly Growth" value="+18%" icon={TrendingUp} subtext="Top 5% in District" glowColor="bg-rose-500" accentGradient="bg-gradient-to-tr from-rose-500 to-red-600" />
+        </section>
+        <section className="rounded-3xl p-6 lg:p-8 bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl">
+          <div className="flex items-center gap-3 border-b border-slate-200 pb-4 mb-6 overflow-x-auto">
+            {[
+              { id: "menu", label: "Menu Showcase", icon: Utensils },
+              { id: "info", label: "Store Information", icon: Info },
+              { id: "reviews", label: "Customer Reviews", icon: MessageSquare },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); sounds.playPop(); }}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+                    activeTab === tab.id ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/30" : "text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <motion.div
-                    className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-transparent to-amber-500/10 opacity-60 blur"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.6 }}
-                  />
-
-                  <motion.button
-                    whileHover={{ scale: 1.03, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}
-                    whileTap={{ scale: 0.97 }}
-                    type="button"
-                    onClick={handleDiscard}
-                    className="relative rounded-xl border border-gray-300/50 bg-white/60 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-white/80 backdrop-blur-sm transition-all"
-                  >
-                    <X size={14} className="absolute left-2 top-1/2 -translate-y-1/2" />
-                    <span className="ml-5">Discard Changes</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    type="submit"
-                    disabled={isSaving}
-                    className="relative flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 disabled:opacity-50 transition-all"
-                  >
-                    {isSaving ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-                        >
-                          <Save size={14} />
-                        </motion.div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={14} />
-                        Save Profile Settings
-                      </>
-                    )}
-                  </motion.button>
-
-                  <motion.div
-                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: hasChanges ? 1 : 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  >
-                    <Sparkles size={10} />
-                  </motion.div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.form>
+                  <TabIcon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {activeTab === "menu" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {["All", "Signature", "Burgers", "Desserts"].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => { setSelectedCategory(cat); sounds.playPop(); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        selectedCategory === cat ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => showToast("Add dish modal ready!")}
+                  className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-xs font-bold transition-all flex items-center gap-1.5 self-end sm:self-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Dish</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {filteredDishes.map((dish) => (
+                  <div key={dish.id} className="group relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200/60 hover:shadow-xl transition-all duration-300">
+                    <div className="h-44 overflow-hidden relative">
+                      <img src={dish.image} alt={dish.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-900/80 backdrop-blur-md text-amber-400 border border-amber-500/30">{dish.badge}</span>
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">{dish.category}</span>
+                        <div className="flex items-center gap-1 text-xs font-bold text-amber-500"><Star className="w-3.5 h-3.5 fill-current" /><span>{dish.rating}</span></div>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800 truncate">{dish.name}</h4>
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-base font-black text-slate-900">{dish.price}</span>
+                        <button onClick={() => showToast(`Edited ${dish.name}`)} className="p-2 rounded-xl bg-slate-200 hover:bg-amber-500 hover:text-white transition-colors"><Edit3 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {activeTab === "info" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4 p-5 rounded-2xl bg-slate-50 border border-slate-200/50">
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Phone className="w-4 h-4 text-amber-500" /> Contact Details</h4>
+                <div className="space-y-2 text-xs font-semibold text-slate-600">
+                  <p><strong>Phone:</strong> {profile.phone}</p>
+                  <p><strong>Email:</strong> {profile.email}</p>
+                  <p><strong>Support Hotline:</strong> +1 (800) 902-FOOD</p>
+                </div>
+              </div>
+              <div className="space-y-4 p-5 rounded-2xl bg-slate-50 border border-slate-200/50">
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Award className="w-4 h-4 text-emerald-500" /> Kitchen Compliance & Hygiene</h4>
+                <div className="space-y-2 text-xs font-semibold text-slate-600">
+                  <p className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Grade A Food Safety Certified</p>
+                  <p className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 100% Organic Sourced Ingredients</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab === "reviews" && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                {[5, 4, 3, 2, 1].map((r) => (
+                  <div key={r} className="flex items-center gap-2 text-xs">
+                    <span className="w-3">{r}★</span>
+                    <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
+                      <motion.div className="h-full rounded-full bg-amber-400" initial={{ width: 0 }} animate={{ width: `${[82, 10, 4, 2, 2][r - 1]}%` }} transition={{ duration: 0.8, delay: 0.2 * r }} />
+                    </div>
+                    <span className="w-6 text-right text-slate-400">{[82, 10, 4, 2, 2][r - 1]}%</span>
+                  </div>
+                ))}
+              </div>
+              {[
+                { name: "Sarah M.", text: "The Truffle Wagyu Burger was out of this world! Fast delivery.", rating: 5, time: "2 hours ago" },
+                { name: "David C.", text: "Exceptional wood-fired flavor. Great presentation.", rating: 5, time: "1 day ago" },
+              ].map((rev, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/50 flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">{rev.name}</span>
+                      <div className="flex text-amber-400">{[...Array(rev.rating)].map((_, r) => <Star key={r} className="w-3 h-3 fill-current" />)}</div>
+                    </div>
+                    <p className="text-xs font-medium text-slate-500 mt-1">{rev.text}</p>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-semibold">{rev.time}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
-    </motion.div>
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500"><Edit3 className="w-6 h-6" /></div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Edit Restaurant Profile</h3>
+                  <p className="text-xs text-slate-500">Update public merchant information</p>
+                </div>
+              </div>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Manager Name</label>
+                <input type="text" value={formData.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Restaurant Title</label>
+                <input type="text" value={formData.restaurantName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, restaurantName: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Tagline</label>
+                <input type="text" value={formData.tagline} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, tagline: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Address</label>
+                <input type="text" value={formData.address} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, address: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-md hover:scale-105 transition-all flex items-center gap-1.5"><Save className="w-4 h-4" /> Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
