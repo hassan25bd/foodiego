@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import * as THREE from "three";
 import {
-  ChefHat, Star, ShoppingBag, TrendingUp, MapPin, Clock, Phone, Edit3, Camera, CheckCircle2, ShieldCheck, Sparkles, Utensils, Plus, Share2, Sliders, Volume2, VolumeX, Save, X, Award, Info, MessageSquare,
+  ChefHat, Star, ShoppingBag, TrendingUp, MapPin, Clock, Phone, Edit3, Camera, CheckCircle2, ShieldCheck, Sparkles, Utensils, Plus, Share2, Sliders, Volume2, VolumeX, Save, X, Award, Info, MessageSquare, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight,
 } from "lucide-react";
 
 interface SoundEngine {
@@ -260,6 +260,162 @@ const Metric3DCard = ({ title, value, icon: Icon, subtext, glowColor, accentGrad
   );
 };
 
+interface Live3DBillboardProps {
+  dishes: Dish[];
+  currentIndex: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onToggleAvailability: (id: number) => void;
+  onEditDish: (dish: Dish) => void;
+  availability: Record<number, boolean>;
+  isPaused: boolean;
+}
+
+const Live3DBillboard = ({ dishes, currentIndex, onPrev, onNext, onToggleAvailability, onEditDish, availability, isPaused }: Live3DBillboardProps) => {
+  if (dishes.length === 0) {
+    return (
+      <div className="rounded-3xl p-12 bg-slate-900/90 border border-slate-700 shadow-2xl text-center text-white">
+        <p className="text-slate-400">No dishes in this category.</p>
+      </div>
+    );
+  }
+
+  const dish = dishes[currentIndex];
+  const isAvailable = availability[dish.id] !== false;
+  const popularity = Math.min(90, Math.round(parseFloat(dish.rating) * 20));
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-3xl bg-slate-900/90 text-white border border-slate-700 shadow-2xl"
+      onMouseEnter={() => {}}
+      onMouseLeave={() => {}}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-transparent pointer-events-none" />
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">LIVE FEATURED SPECIAL</span>
+      </div>
+
+      <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 lg:p-8">
+        <div className="relative flex flex-col items-center justify-center">
+          <div className="relative w-full max-w-xs aspect-square">
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="w-full h-full rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl"
+            >
+              {dish.image ? (
+                <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                  <span className="text-4xl">🍽️</span>
+                </div>
+              )}
+              <span className="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-slate-900/80 backdrop-blur-md text-amber-400 border border-amber-500/30">
+                {dish.badge}
+              </span>
+            </motion.div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <span className="text-3xl font-black text-amber-400">{dish.price}</span>
+            <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-sm font-bold">
+              <Star className="w-4 h-4 fill-current" />{dish.rating}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-center space-y-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={dish.id}
+              initial={{ opacity: 0, rotateY: -15, scale: 0.95 }}
+              animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+              exit={{ opacity: 0, rotateY: 15, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              style={{ transformStyle: "preserve-3d" }}
+            >
+              <h3 className="text-3xl font-black tracking-tight">{dish.name}</h3>
+              <p className="text-sm text-slate-300 mt-1">
+                Artisanal dish crafted with premium ingredients. Freshly prepared and highly rated by our customers.
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Popularity Score</span>
+              <span className="text-amber-400 font-black">{popularity}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${popularity}%` }}
+                transition={{ duration: 0.8 }}
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400">Orders Today:</span>
+            <span className="font-black text-emerald-400">{Math.round(popularity * 12.8)}</span>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">Available:</span>
+              <button
+                onClick={() => onToggleAvailability(dish.id)}
+                className="flex items-center"
+              >
+                {isAvailable ? (
+                  <ToggleRight className="w-10 h-6 text-emerald-400" />
+                ) : (
+                  <ToggleLeft className="w-10 h-6 text-slate-500" />
+                )}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onPrev}
+                className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => onEditDish(dish)}
+                className="p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors"
+                title="Edit dish"
+              >
+                <Edit3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onNext}
+                className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface Dish {
+  id: number;
+  name: string;
+  category: string;
+  price: string;
+  rating: string;
+  image: string;
+  badge: string;
+}
+
 export default function RestaurantProfile() {
   const [profile, setProfile] = useState({
     name: "Abid Merchant",
@@ -280,12 +436,118 @@ export default function RestaurantProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({ ...profile });
-  const [dishes] = useState([
-    { id: 1, name: "Truffle Wagyu Burger", category: "Burgers", price: "৳450", rating: "4.9", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80", badge: "Bestseller" },
-    { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&auto=format&fit=crop&q=80", badge: "Chef Choice" },
-    { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=500&auto=format&fit=crop&q=80", badge: "Fresh" },
-    { id: 4, name: "Matcha Souffle Pancake", category: "Desserts", price: "৳320", rating: "5.0", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80", badge: "Popular" },
+  const [coverImage, setCoverImage] = useState(profile.cover);
+  const [avatarImage, setAvatarImage] = useState(profile.avatar);
+  const [coverError, setCoverError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedCover = localStorage.getItem("foodiego_cover_image");
+    const savedAvatar = localStorage.getItem("foodiego_avatar_image");
+    if (savedCover) {
+      setCoverImage(savedCover);
+      setCoverError(false);
+    }
+    if (savedAvatar) {
+      setAvatarImage(savedAvatar);
+      setAvatarError(false);
+    }
+  }, []);
+
+  const saveImageToLocalStorage = (key: string, dataUrl: string) => {
+    try {
+      localStorage.setItem(key, dataUrl);
+    } catch (err) {
+      console.warn("localStorage save failed, using state only:", err);
+    }
+  };
+  const [dishes, setDishes] = useState([
+    { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", badge: "Chef Choice" },
+    { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80", badge: "Fresh" },
   ]);
+  const [dishImageErrors, setDishImageErrors] = useState<Record<number, boolean>>({});
+  const [isAddDishOpen, setIsAddDishOpen] = useState(false);
+  const [editingDish, setEditingDish] = useState<Dish | null>(null);
+  const [dishForm, setDishForm] = useState({
+    name: "",
+    category: "Signature",
+    price: "",
+    rating: "4.5",
+    image: "",
+    badge: "",
+  });
+  const [billboardIndex, setBillboardIndex] = useState(0);
+  const [isAutoPlayPaused, setIsAutoPlayPaused] = useState(false);
+  const [dishAvailability, setDishAvailability] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("foodiego_dishes");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDishes(parsed);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load saved dishes:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("foodiego_dishes", JSON.stringify(dishes));
+    } catch (err) {
+      console.warn("Failed to save dishes:", err);
+    }
+  }, [dishes]);
+
+  const filteredDishes = selectedCategory === "All" ? dishes : dishes.filter((d) => d.category === selectedCategory);
+
+  useEffect(() => {
+    if (filteredDishes.length === 0) {
+      setBillboardIndex(0);
+      return;
+    }
+    if (billboardIndex >= filteredDishes.length) {
+      setBillboardIndex(0);
+    }
+  }, [filteredDishes.length]);
+
+  useEffect(() => {
+    if (isAutoPlayPaused || filteredDishes.length <= 1) return;
+    const timer = setInterval(() => {
+      setBillboardIndex((prev) => (prev + 1) % filteredDishes.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isAutoPlayPaused, filteredDishes.length]);
+
+  const handlePrevDish = () => {
+    setBillboardIndex((prev) => (prev - 1 + filteredDishes.length) % filteredDishes.length);
+    setIsAutoPlayPaused(true);
+    setTimeout(() => setIsAutoPlayPaused(false), 10000);
+  };
+
+  const handleNextDish = () => {
+    setBillboardIndex((prev) => (prev + 1) % filteredDishes.length);
+    setIsAutoPlayPaused(true);
+    setTimeout(() => setIsAutoPlayPaused(false), 10000);
+  };
+
+  const handleToggleAvailability = (dishId: number) => {
+    setDishAvailability((prev) => ({
+      ...prev,
+      [dishId]: prev[dishId] === false ? true : false,
+    }));
+    showToast("Availability updated");
+  };
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -298,11 +560,148 @@ export default function RestaurantProfile() {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     sounds.playPop();
-    setProfile({ ...formData });
+    setProfile({ ...formData, avatar: avatarImage, cover: coverImage });
     setIsEditModalOpen(false);
     showToast("Profile details updated successfully!");
   };
-  const filteredDishes = selectedCategory === "All" ? dishes : dishes.filter((d) => d.category === selectedCategory);
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCover(true);
+    setCoverError(false);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCoverImage(dataUrl);
+      saveImageToLocalStorage("foodiego_cover_image", dataUrl);
+      setIsUploadingCover(false);
+      showToast("Cover image saved!");
+    };
+    reader.onerror = () => {
+      setCoverError(true);
+      setIsUploadingCover(false);
+      showToast("Failed to read image");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    setAvatarError(false);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setAvatarImage(dataUrl);
+      saveImageToLocalStorage("foodiego_avatar_image", dataUrl);
+      setIsUploadingAvatar(false);
+      showToast("Avatar saved!");
+    };
+    reader.onerror = () => {
+      setAvatarError(true);
+      setIsUploadingAvatar(false);
+      showToast("Failed to read image");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: "Truffle House Kitchen",
+      text: "Check out our restaurant on FoodieGo!",
+      url: window.location.href,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        showToast("Share canceled");
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast("Restaurant link copied to clipboard!");
+      } catch {
+        showToast("Unable to copy link");
+      }
+    }
+  };
+
+  const openAddDishModal = () => {
+    setEditingDish(null);
+    setDishForm({ name: "", category: "Signature", price: "", rating: "4.5", image: "", badge: "" });
+    setIsAddDishOpen(true);
+  };
+
+  const openEditDishModal = (dish: Dish) => {
+    setEditingDish(dish);
+    setDishForm({
+      name: dish.name,
+      category: dish.category,
+      price: dish.price,
+      rating: dish.rating,
+      image: dish.image,
+      badge: dish.badge,
+    });
+    setIsAddDishOpen(true);
+  };
+
+  const closeDishModal = () => {
+    setIsAddDishOpen(false);
+    setEditingDish(null);
+    setDishForm({ name: "", category: "Signature", price: "", rating: "4.5", image: "", badge: "" });
+  };
+
+  const handleDishFormChange = (field: string, value: string) => {
+    setDishForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDishImageError = (dishId: number) => {
+    setDishImageErrors((prev) => ({ ...prev, [dishId]: true }));
+  };
+
+  const handleSaveDish = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dishForm.name.trim() || !dishForm.price.trim()) {
+      showToast("Name and price are required");
+      return;
+    }
+    if (editingDish) {
+      setDishes((prev) =>
+        prev.map((d) =>
+          d.id === editingDish.id
+            ? { ...d, ...dishForm, price: dishForm.price.startsWith("৳") ? dishForm.price : `৳${dishForm.price}` }
+            : d
+        )
+      );
+      showToast("Dish updated successfully!");
+    } else {
+      const newDish: Dish = {
+        id: Date.now(),
+        name: dishForm.name.trim(),
+        category: dishForm.category,
+        price: dishForm.price.startsWith("৳") ? dishForm.price : `৳${dishForm.price}`,
+        rating: dishForm.rating,
+        image: dishForm.image,
+        badge: dishForm.badge,
+      };
+      setDishes((prev) => [...prev, newDish]);
+      showToast("New dish added!");
+    }
+    closeDishModal();
+  };
+
+  const handleDeleteDish = (dishId: number) => {
+    setDishes((prev) => prev.filter((d) => d.id !== dishId));
+    setDishImageErrors((prev) => {
+      const next = { ...prev };
+      delete next[dishId];
+      return next;
+    });
+    showToast("Dish removed");
+  };
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 relative font-sans transition-colors duration-300 overflow-x-hidden">
       <Interactive3DScene />
@@ -313,53 +712,73 @@ export default function RestaurantProfile() {
         </div>
       )}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <header className="flex items-center justify-between p-4 lg:p-6 rounded-3xl bg-white/75 backdrop-blur-2xl border border-white/60 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-              <ChefHat className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tight text-slate-900">FoodieGo</h1>
-              <p className="text-xs font-medium text-slate-500">Merchant Interactive Profile</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={toggleSound} className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" title="Toggle Audio FX">
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-500" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => { setIsEditModalOpen(true); sounds.playPop(); }}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xs shadow-md shadow-orange-500/30 hover:scale-[1.03] active:scale-95 transition-all flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>Edit Details</span>
-            </button>
-          </div>
-        </header>
-        <section className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-2xl">
-          <div className="relative h-48 sm:h-64 w-full overflow-hidden">
-            <img src={profile.cover} alt="Cover" className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700" />
+        <section className="relative overflow-hidden rounded-3xl bg-white backdrop-blur-xl border border-white/50 shadow-2xl flex flex-col">
+          <div className="relative h-48 md:h-52 w-full overflow-hidden rounded-t-2xl bg-slate-200">
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleCoverChange}
+              hidden
+            />
+            {coverError || !coverImage ? (
+              <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                <ChefHat className="w-16 h-16 text-slate-400" />
+              </div>
+            ) : (
+              <img
+                src={coverImage}
+                alt="Cover"
+                className="w-full h-full object-cover"
+                onError={() => setCoverError(true)}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
             <button
-              onClick={() => { setIsEditModalOpen(true); sounds.playPop(); }}
+              onClick={() => { coverInputRef.current?.click(); sounds.playPop(); }}
               className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/60 backdrop-blur-md text-white text-xs font-bold hover:bg-slate-950/80 transition-all flex items-center gap-1.5 border border-white/20"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Change Cover</span>
+              <span>{isUploadingCover ? "Uploading..." : "Change Cover"}</span>
             </button>
           </div>
-          <div className="relative px-6 pb-6 pt-0 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 -mt-16 sm:-mt-20">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
-              <div className="relative group">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-slate-800">
-                  <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
+          <div className="bg-white rounded-b-2xl p-6 relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-5">
+              <div className="relative group -mt-14 z-20">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  hidden
+                />
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white shadow-md bg-white relative">
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-20">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {avatarError || !avatarImage ? (
+                    <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                      <ChefHat className="w-10 h-10 text-slate-400" />
+                    </div>
+                  ) : (
+                    <img src={avatarImage} alt={profile.name} className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
+                  )}
+                  <button
+                    onClick={() => { avatarInputRef.current?.click(); sounds.playPop(); }}
+                    className="absolute inset-0 flex items-center justify-center bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer"
+                    title="Change avatar"
+                  >
+                    <Camera className="w-6 h-6 text-white" />
+                  </button>
                 </div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-white" title="Store Status: OPEN" />
+                <div className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-500 ring-3 ring-white" title="Store Status: OPEN" />
               </div>
               <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{profile.restaurantName}</h2>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                <div className="flex items-center flex-wrap">
+                  <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{profile.restaurantName}</h2>
+                  <span className="inline-flex items-center gap-1 ml-3 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     {profile.accountType}
                   </span>
@@ -373,13 +792,13 @@ export default function RestaurantProfile() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-              <button onClick={() => showToast("Public menu share link copied!")} className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" title="Share Profile">
+            <div className="flex items-center gap-2 justify-end">
+              <button onClick={handleShare} className="p-3 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" title="Share Profile">
                 <Share2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                className="flex-1 md:flex-initial px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
                 <Sliders className="w-4 h-4" />
                 <span>Manage Store</span>
@@ -416,51 +835,117 @@ export default function RestaurantProfile() {
             })}
           </div>
           {activeTab === "menu" && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                  {["All", "Signature", "Burgers", "Desserts"].map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => { setSelectedCategory(cat); sounds.playPop(); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        selectedCategory === cat ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => showToast("Add dish modal ready!")}
-                  className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-xs font-bold transition-all flex items-center gap-1.5 self-end sm:self-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Dish</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredDishes.map((dish) => (
-                  <div key={dish.id} className="group relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200/60 hover:shadow-xl transition-all duration-300">
-                    <div className="h-44 overflow-hidden relative">
-                      <img src={dish.image} alt={dish.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-900/80 backdrop-blur-md text-amber-400 border border-amber-500/30">{dish.badge}</span>
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">{dish.category}</span>
-                        <div className="flex items-center gap-1 text-xs font-bold text-amber-500"><Star className="w-3.5 h-3.5 fill-current" /><span>{dish.rating}</span></div>
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-800 truncate">{dish.name}</h4>
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-base font-black text-slate-900">{dish.price}</span>
-                        <button onClick={() => showToast(`Edited ${dish.name}`)} className="p-2 rounded-xl bg-slate-200 hover:bg-amber-500 hover:text-white transition-colors"><Edit3 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key="menu-content"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex flex-nowrap overflow-x-auto gap-2 p-2 pb-3 scrollbar-hide border-b border-slate-200">
+                    {["All", "Signature"].map((cat) => (
+                      <motion.button
+                        key={cat}
+                        layoutId="activeCategoryPill"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => { setSelectedCategory(cat); sounds.playPop(); }}
+                        className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                          selectedCategory === cat ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {cat}
+                      </motion.button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={openAddDishModal}
+                    className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-xs font-bold transition-all flex items-center gap-1.5 self-end sm:self-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Dish</span>
+                  </motion.button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <AnimatePresence>
+                    {filteredDishes.map((dish) => (
+                      <motion.div
+                        key={dish.id}
+                        layout
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.25 }}
+                        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                        className="group relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200/60 hover:shadow-xl"
+                      >
+                        <div className="h-44 overflow-hidden relative">
+                          {dishImageErrors[dish.id] || !dish.image ? (
+                            <div className="w-full h-full bg-gradient-to-br from-amber-100 to-orange-50 flex items-center justify-center">
+                              <Utensils className="w-12 h-12 text-amber-400" />
+                            </div>
+                          ) : (
+                            <img
+                              src={dish.image}
+                              alt={dish.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              onError={() => handleDishImageError(dish.id)}
+                            />
+                          )}
+                          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-900/80 backdrop-blur-md text-amber-400 border border-amber-500/30">{dish.badge}</span>
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">{dish.category}</span>
+                            <div className="flex items-center gap-1 text-xs font-bold text-amber-500"><Star className="w-3.5 h-3.5 fill-current" /><span>{dish.rating}</span></div>
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800 truncate">{dish.name}</h4>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-base font-black text-slate-900">{dish.price}</span>
+                            <div className="flex items-center gap-1">
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => openEditDishModal(dish)}
+                                className="p-2 rounded-xl bg-slate-200 hover:bg-amber-500 hover:text-white transition-colors"
+                                title="Edit dish"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDeleteDish(dish.id)}
+                                className="p-2 rounded-xl bg-slate-200 hover:bg-rose-500 hover:text-white transition-colors"
+                                title="Delete dish"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                <Live3DBillboard
+                  dishes={filteredDishes}
+                  currentIndex={billboardIndex}
+                  onPrev={handlePrevDish}
+                  onNext={handleNextDish}
+                  onToggleAvailability={handleToggleAvailability}
+                  onEditDish={openEditDishModal}
+                  availability={dishAvailability}
+                  isPaused={isAutoPlayPaused}
+                />
+              </motion.div>
+            </AnimatePresence>
           )}
           {activeTab === "info" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -551,6 +1036,69 @@ export default function RestaurantProfile() {
           </div>
         </div>
       )}
+      <AnimatePresence>
+        {isAddDishOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500"><Utensils className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">{editingDish ? "Edit Dish" : "Add New Dish"}</h3>
+                    <p className="text-xs text-slate-500">{editingDish ? "Update dish details" : "Create a new menu item"}</p>
+                  </div>
+                </div>
+                <button onClick={closeDishModal} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-5 h-5" /></button>
+              </div>
+              <form onSubmit={handleSaveDish} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Dish Name</label>
+                  <input type="text" value={dishForm.name} onChange={(e) => handleDishFormChange("name", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" placeholder="e.g. Truffle Wagyu Burger" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Category</label>
+                  <select value={dishForm.category} onChange={(e) => handleDishFormChange("category", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500">
+                    <option>Signature</option>
+                    <option>Pasta</option>
+                    <option>Drinks</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Price (৳)</label>
+                  <input type="text" value={dishForm.price} onChange={(e) => handleDishFormChange("price", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" placeholder="e.g. 450" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Rating</label>
+                  <input type="text" value={dishForm.rating} onChange={(e) => handleDishFormChange("rating", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" placeholder="e.g. 4.9" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Badge Label</label>
+                  <input type="text" value={dishForm.badge} onChange={(e) => handleDishFormChange("badge", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" placeholder="e.g. Bestseller" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Image URL</label>
+                  <input type="text" value={dishForm.image} onChange={(e) => handleDishFormChange("image", e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border-none text-xs font-semibold focus:ring-2 focus:ring-amber-500" placeholder="https://..." />
+                </div>
+                <div className="pt-2 flex items-center justify-end gap-3">
+                  <button type="button" onClick={closeDishModal} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200">Cancel</button>
+                  <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-md hover:scale-105 transition-all flex items-center gap-1.5"><Save className="w-4 h-4" /> {editingDish ? "Update Dish" : "Add Dish"}</button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
