@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createElement } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Wallet, Banknote, Smartphone } from "lucide-react";
 
@@ -128,22 +128,25 @@ function WithdrawForm({
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-2">Payment Method</label>
         <div className="space-y-2">
-          {methods.map((m) => (
-            <motion.button
-              key={m.id}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => setSelectedMethod(m.id)}
-              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                selectedMethod === m.id
-                  ? "border-emerald-500 bg-emerald-50/50"
-                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
-              }`}
-            >
-              <m.icon size={20} className={selectedMethod === m.id ? "text-emerald-600" : "text-gray-500"} />
-              <span className="font-medium text-gray-800">{m.label}</span>
-              {m.fee > 0 && <span className={`ml-auto text-xs text-gray-500`}>Fee: ৳{m.fee}</span>}
-            </motion.button>
-          ))}
+          {methods.map((m) => {
+            const IconComp = m.icon as React.ElementType;
+            return (
+              <motion.button
+                key={m.id}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSelectedMethod(m.id)}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                  selectedMethod === m.id
+                    ? "border-emerald-500 bg-emerald-50/50"
+                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                }`}
+              >
+                {createElement(IconComp, { size: 20, className: selectedMethod === m.id ? "text-emerald-600" : "text-gray-500" })}
+                <span className="font-medium text-gray-800">{m.label}</span>
+                {m.fee > 0 && <span className="ml-auto text-xs text-gray-500">Fee: ৳{m.fee}</span>}
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
