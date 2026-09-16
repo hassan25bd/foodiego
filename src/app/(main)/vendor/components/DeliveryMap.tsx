@@ -97,7 +97,7 @@ function createDestinationMarkerEl(): HTMLElement {
   return el;
 }
 
-export default function DeliveryMap({ riderLocations, deliveries, onRiderClick }: DeliveryMapProps) {
+export default function DeliveryMap({ riderLocations, deliveries, onRiderClick, className }: DeliveryMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<MaplibreMap | null>(null);
   const markersRef = useRef<Map<string, MaplibreMarker>>(new Map());
