@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Bell,
   HelpCircle,
@@ -13,8 +13,12 @@ import {
   Settings,
   LogOut,
   Home,
+  Store,
+  LoaderCircle,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useVendorProfile, useUpdateVendorProfile } from "@/hooks/useVendorProfile";
+import { springTransition } from "@/app/(main)/vendor/components/motion";
 
 interface VendorHeaderProps {
   userName?: string;
@@ -26,54 +30,61 @@ const dropdownItems = [
     label: "Return to Home",
     icon: Home,
     href: "/",
-    className: "text-gray-700 hover:bg-gray-50",
+    className: "text-slate-700 hover:bg-slate-50",
   },
   {
-    label: "Profile",
+    label: "Restaurant Profile",
     icon: User,
-    href: "/profile",
-    className: "text-gray-700 hover:bg-gray-50",
+    href: "/vendor/profile",
+    className: "text-slate-700 hover:bg-slate-50",
   },
   {
     label: "My Cart",
     icon: ShoppingCart,
     href: "/cart",
-    className: "text-gray-700 hover:bg-gray-50",
+    className: "text-slate-700 hover:bg-slate-50",
   },
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    href: "/vendor",
-    className: "text-gray-700 hover:bg-gray-50",
+    href: "/vendor?tab=dashboard",
+    className: "text-slate-700 hover:bg-slate-50",
   },
   {
     label: "Settings",
     icon: Settings,
     href: "/vendor/settings",
-    className: "text-gray-700 hover:bg-gray-50",
+    className: "text-slate-700 hover:bg-slate-50",
   },
   {
     label: "Logout",
     icon: LogOut,
     href: null,
-    className: "text-red-600 hover:bg-red-50",
+    className: "text-rose-600 hover:bg-rose-50",
     isLogout: true,
   },
 ];
 
 export default function VendorHeader({ userName, userEmail }: VendorHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { logoutUser } = useApp();
+  const { data: profile } = useVendorProfile();
+  const updateProfile = useUpdateVendorProfile();
 
-  const displayName = userName || "Delton";
-  const displayEmail = userEmail || "user@example.com";
+  const displayName = userName || profile?.name || "Vendor";
+  const displayEmail = userEmail || profile?.email || "user@example.com";
   const initials = displayName
     .split(" ")
-    .map((n) => n[0])
+    .map((name) => name[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  useEffect(() => {
+    if (profile?.storeStatus) setStoreOpen(profile.storeStatus === "open");
+  }, [profile?.storeStatus]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,64 +97,91 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleItemClick = () => {
-    setDropdownOpen(false);
-  };
+  const handleItemClick = () => setDropdownOpen(false);
 
   const handleLogout = async () => {
     handleItemClick();
     await logoutUser();
   };
 
+  const handleStoreStatus = () => {
+    const nextStatus = storeOpen ? "closed" : "open";
+    setStoreOpen(!storeOpen);
+    updateProfile.mutate({ storeStatus: nextStatus });
+  };
+
   return (
-    <header className="sticky top-0 z-30 border-b border-[#E5E7EB] bg-white px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-      <form className="flex-1 max-w-md" role="search">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-200/70 bg-white/85 px-4 shadow-sm backdrop-blur-md sm:px-6 lg:px-8">
+      <form
+        className="flex-1 max-w-md"
+        role="search"
+        onSubmit={(event) => event.preventDefault()}
+      >
         <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-          />
+          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             placeholder="Search orders, customers..."
-            className="w-full rounded-full border border-[#E5E7EB] bg-gray-50 pl-10 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:border-[#10B981] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 transition-colors"
+            className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
           />
         </div>
       </form>
 
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <button
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <motion.button
           type="button"
-          className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          transition={springTransition}
+          className="relative rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           aria-label="Notifications"
         >
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#EF4444] border-2 border-white"></span>
-        </button>
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          transition={springTransition}
+          className="rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           aria-label="Help"
         >
           <HelpCircle size={20} />
-        </button>
+        </motion.button>
 
-        <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-[#10B981]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]"></span>
-          FoodieGo Restaurant • Open
-        </span>
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          transition={springTransition}
+          onClick={handleStoreStatus}
+          disabled={updateProfile.isPending}
+          className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-60 sm:inline-flex"
+        >
+          {updateProfile.isPending ? (
+            <LoaderCircle size={13} className="animate-spin" />
+          ) : (
+            <Store size={13} />
+          )}
+          {storeOpen ? "Open" : "Closed"}
+        </motion.button>
 
         <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-700 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-[#10B981]/30 transition-all"
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={springTransition}
+            onClick={() => setDropdownOpen((open) => !open)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-black text-white shadow-md shadow-emerald-500/20 ring-2 ring-white focus:outline-none focus:ring-emerald-300"
             aria-label="User menu"
             aria-haspopup="menu"
             aria-expanded={dropdownOpen}
           >
             {initials}
-          </button>
+          </motion.button>
 
           <AnimatePresence>
             {dropdownOpen && (
@@ -151,13 +189,13 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
                 initial={{ opacity: 0, scale: 0.95, y: -8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="absolute right-0 mt-2 w-64 origin-top-right"
+                transition={springTransition}
+                className="absolute right-0 z-50 mt-2 w-64 origin-top-right"
               >
-                <div className="bg-white shadow-xl rounded-2xl border border-slate-100 p-2 min-w-[240px]">
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="font-semibold text-gray-900">{displayName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{displayEmail}</p>
+                <div className="min-w-[240px] rounded-2xl border border-slate-200/70 bg-white p-2 shadow-xl">
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="text-sm font-bold text-slate-900">{displayName}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{displayEmail}</p>
                   </div>
 
                   <div className="py-1">
@@ -167,7 +205,7 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
                         <button
                           key={item.label}
                           onClick={handleLogout}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${item.className}`}
+                          className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${item.className}`}
                         >
                           <Icon size={16} />
                           <span>{item.label}</span>
@@ -177,7 +215,7 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
                           key={item.label}
                           href={item.href}
                           onClick={handleItemClick}
-                          className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${item.className}`}
+                          className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${item.className}`}
                         >
                           <Icon size={16} />
                           <span>{item.label}</span>

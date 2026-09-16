@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Check, X, RotateCcw, LoaderCircle } from "lucide-react";
 import {
   approveRider,

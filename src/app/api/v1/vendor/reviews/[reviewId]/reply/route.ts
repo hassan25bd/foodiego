@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { verifySessionCookie } from "@/lib/session";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
-import { demoReviews } from "@/app/api/v1/vendor/reviews/route";
+import { Review } from "@/models/Review";
 
 export async function POST(
   req: NextRequest,
@@ -16,21 +16,10 @@ export async function POST(
   const body = await req.json();
   const { text } = body;
 
-  const review = demoReviews.find((r) => r.id === reviewId);
-  if (!review) {
-    return NextResponse.json({ error: "Review not found" }, { status: 404 });
-  }
-
   if (process.env.NODE_ENV === "development" && !decoded) {
-    review.reply = {
-      text: text || "",
-      createdAt: new Date().toISOString(),
-      by: "Restaurant Manager",
-    };
-
     return NextResponse.json({
       success: true,
-      review,
+      review: { id: reviewId, reply: { text: text || "", createdAt: new Date().toISOString(), by: "Restaurant Manager" } },
       message: `Reply posted to review ${reviewId}`,
     });
   }
@@ -45,15 +34,28 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  review.reply = {
+  const review = await Review.findById(reviewId);
+  if (!review) {
+    return NextResponse.json({ error: "Review not found" }, { status: 404 });
+  }
+
+  review.set("reply", {
     text: text || "",
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
     by: user.name || "Restaurant Manager",
-  };
+  });
+  await review.save();
 
   return NextResponse.json({
     success: true,
-    review,
+    review: {
+      id: review._id.toString(),
+      reply: {
+        text: review.reply?.text || "",
+        createdAt: review.reply?.createdAt?.toISOString() || new Date().toISOString(),
+        by: review.reply?.by || "Restaurant Manager",
+      },
+    },
     message: `Reply posted to review ${reviewId}`,
   });
 }
@@ -67,17 +69,10 @@ export async function DELETE(
 
   const { reviewId } = await params;
 
-  const review = demoReviews.find((r) => r.id === reviewId);
-  if (!review) {
-    return NextResponse.json({ error: "Review not found" }, { status: 404 });
-  }
-
   if (process.env.NODE_ENV === "development" && !decoded) {
-    review.reply = undefined;
-
     return NextResponse.json({
       success: true,
-      review,
+      review: { id: reviewId, reply: undefined },
       message: `Reply removed from review ${reviewId}`,
     });
   }
@@ -92,11 +87,17 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  review.reply = undefined;
+  const review = await Review.findById(reviewId);
+  if (!review) {
+    return NextResponse.json({ error: "Review not found" }, { status: 404 });
+  }
+
+  review.set("reply", undefined);
+  await review.save();
 
   return NextResponse.json({
     success: true,
-    review,
+    review: { id: review._id.toString(), reply: undefined },
     message: `Reply removed from review ${reviewId}`,
   });
 }

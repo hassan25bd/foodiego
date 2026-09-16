@@ -28,6 +28,7 @@ export interface DeliveryMapProps {
   riderLocations: RiderLocation[];
   deliveries: DeliveryPoint[];
   onRiderClick?: (riderId: string) => void;
+  className?: string;
 }
 
 const BANANI_COORD: LngLatLike = [90.4066, 23.7937];
@@ -238,8 +239,8 @@ export default function DeliveryMap({ riderLocations, deliveries, onRiderClick }
   return (
     <div
       ref={mapContainer}
-      className="relative h-[500px] w-full overflow-hidden rounded-xl"
-      style={{ minHeight: "500px" }}
+      className={`relative w-full overflow-hidden rounded-xl ${className ?? "h-[500px]"}`}
+      style={className ? undefined : { minHeight: "500px" }}
     />
   );
 }

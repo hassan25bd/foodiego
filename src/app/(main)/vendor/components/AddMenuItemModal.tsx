@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Upload, Plus, Trash2, Check } from "lucide-react";
 import { useCreateMenuItem } from "@/hooks/useVendorMenu";
 import type { CreateMenuItemInput, MenuItemAddon } from "@/hooks/useVendorMenu";
@@ -198,11 +197,10 @@ export default function AddMenuItemModal({ open, onClose }: AddMenuItemModalProp
                     </button>
                     {imagePreview ? (
                       <div className="relative h-24 w-24 overflow-hidden rounded-xl border border-[#E5E7EB]">
-                        <Image
+                        <img
                           src={imagePreview}
                           alt="Upload preview"
-                          fill
-                          className="object-cover"
+                          className="h-full w-full object-cover"
                         />
                         <button
                           type="button"

@@ -1,5 +1,11 @@
 import mongoose, { Schema, models, model } from "mongoose";
 
+export interface Reply {
+  text: string;
+  createdAt: Date;
+  by: string;
+}
+
 export interface ReviewDocument {
   _id: mongoose.Types.ObjectId;
   orderId: string;
@@ -8,6 +14,7 @@ export interface ReviewDocument {
   rating: number;
   text: string;
   sentiment: "positive" | "neutral" | "negative";
+  reply?: Reply;
   createdAt: Date;
 }
 
@@ -22,6 +29,11 @@ const ReviewSchema = new Schema<ReviewDocument>(
       type: String,
       enum: ["positive", "neutral", "negative"],
       default: "positive",
+    },
+    reply: {
+      text: { type: String },
+      createdAt: { type: Date },
+      by: { type: String },
     },
   },
   { timestamps: true }

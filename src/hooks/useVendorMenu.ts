@@ -85,6 +85,26 @@ export const useCategoryMetrics = (items: MenuItem[]) => {
   return metrics;
 };
 
+export const useAllCategoriesMetrics = () => {
+  return useQuery<CategoryMetric[]>({
+    queryKey: ["vendor-menu-categories-metrics"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/vendor/menu?limit=1000", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch menu");
+      const data = await res.json();
+      const items: MenuItem[] = data.items ?? [];
+      const categories = ["Burgers", "Pizza", "Drinks", "Desserts", "Sides", "Snacks"];
+      return categories.map((cat) => ({
+        name: cat,
+        icon: cat === "Burgers" ? "🍔" : cat === "Pizza" ? "🍕" : cat === "Drinks" ? "🥤" : cat === "Desserts" ? "🍰" : cat === "Sides" ? "🍟" : "🍿",
+        activeItems: items.filter((i) => i.category === cat && i.isActive).length,
+      }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useToggleMenuItem = () => {
   const queryClient = useQueryClient();
 

@@ -23,6 +23,12 @@ export interface DashboardStats {
     time: string;
     status: string;
   }[];
+  totalRestaurants: number;
+}
+
+export interface SalesAnalytics {
+  salesData: { day: string; revenue: number; orders: number }[];
+  totalWeekly: number;
 }
 
 export interface OrderItem {
@@ -69,6 +75,19 @@ export const useDashboardStats = () => {
   });
 };
 
+export const useSalesAnalytics = () => {
+  return useQuery<SalesAnalytics>({
+    queryKey: ["sales-analytics"],
+    queryFn: async () => {
+      const res = await fetch("/api/vendor/analytics/sales", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch sales analytics");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useOrders = () => {
   return useQuery<Order[]>({
     queryKey: ["orders"],
@@ -103,7 +122,7 @@ export const useOrderMutation = () => {
         old
           ? old.map((order) =>
               order.id === orderId
-                ? { ...order, status: action === "accept" ? "accepted" : action === "reject" ? "rejected" : order.status }
+                ? { ...order, status: action === "accept" ? "preparing" : action === "reject" ? "rejected" : order.status }
                 : order
             )
           : []

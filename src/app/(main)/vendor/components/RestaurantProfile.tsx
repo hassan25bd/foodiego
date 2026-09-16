@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import * as THREE from "three";
 import {
   ChefHat, Star, ShoppingBag, TrendingUp, MapPin, Clock, Phone, Edit3, Camera, CheckCircle2, ShieldCheck, Sparkles, Utensils, Plus, Share2, Sliders, Volume2, VolumeX, Save, X, Award, Info, MessageSquare, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import { uploadImage } from "@/app/(public)/actions/upload";
+import { useVendorProfile, useUpdateVendorProfile } from "@/hooks/useVendorProfile";
 
 interface SoundEngine {
   ctx: AudioContext | null;
@@ -442,6 +444,8 @@ export default function RestaurantProfile() {
   const [avatarError, setAvatarError] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const { data: vendorProfile } = useVendorProfile();
+  const updateProfile = useUpdateVendorProfile();
   const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -565,46 +569,84 @@ export default function RestaurantProfile() {
     showToast("Profile details updated successfully!");
   };
 
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingCover(true);
     setCoverError(false);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setCoverImage(dataUrl);
-      saveImageToLocalStorage("foodiego_cover_image", dataUrl);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        setCoverImage(dataUrl);
+        saveImageToLocalStorage("foodiego_cover_image", dataUrl);
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("folder", "restaurants");
+          const result = await uploadImage(formData);
+          if (result.success) {
+            await updateProfile.mutateAsync({ coverImage: result.data.secureUrl });
+            setCoverImage(result.data.secureUrl);
+            saveImageToLocalStorage("foodiego_cover_image", result.data.secureUrl);
+          }
+        } catch {
+          // base64 already saved locally
+        }
+        setIsUploadingCover(false);
+        showToast("Cover image saved!");
+      };
+      reader.onerror = () => {
+        setCoverError(true);
+        setIsUploadingCover(false);
+        showToast("Failed to read image");
+      };
+      reader.readAsDataURL(file);
+    } catch {
       setIsUploadingCover(false);
-      showToast("Cover image saved!");
-    };
-    reader.onerror = () => {
       setCoverError(true);
-      setIsUploadingCover(false);
-      showToast("Failed to read image");
-    };
-    reader.readAsDataURL(file);
+      showToast("Upload failed");
+    }
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingAvatar(true);
     setAvatarError(false);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setAvatarImage(dataUrl);
-      saveImageToLocalStorage("foodiego_avatar_image", dataUrl);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        setAvatarImage(dataUrl);
+        saveImageToLocalStorage("foodiego_avatar_image", dataUrl);
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("folder", "avatars");
+          const result = await uploadImage(formData);
+          if (result.success) {
+            await updateProfile.mutateAsync({ logoUrl: result.data.secureUrl });
+            setAvatarImage(result.data.secureUrl);
+            saveImageToLocalStorage("foodiego_avatar_image", result.data.secureUrl);
+          }
+        } catch {
+          // base64 already saved locally
+        }
+        setIsUploadingAvatar(false);
+        showToast("Avatar saved!");
+      };
+      reader.onerror = () => {
+        setAvatarError(true);
+        setIsUploadingAvatar(false);
+        showToast("Failed to read image");
+      };
+      reader.readAsDataURL(file);
+    } catch {
       setIsUploadingAvatar(false);
-      showToast("Avatar saved!");
-    };
-    reader.onerror = () => {
       setAvatarError(true);
-      setIsUploadingAvatar(false);
-      showToast("Failed to read image");
-    };
-    reader.readAsDataURL(file);
+      showToast("Upload failed");
+    }
   };
 
   const handleShare = async () => {
@@ -713,7 +755,7 @@ export default function RestaurantProfile() {
       )}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <section className="relative overflow-hidden rounded-3xl bg-white backdrop-blur-xl border border-white/50 shadow-2xl flex flex-col">
-          <div className="relative h-48 md:h-52 w-full overflow-hidden rounded-t-2xl bg-slate-200">
+          <div className="relative h-52 w-full overflow-hidden rounded-t-2xl bg-slate-200">
             <input
               ref={coverInputRef}
               type="file"
@@ -729,7 +771,7 @@ export default function RestaurantProfile() {
               <img
                 src={coverImage}
                 alt="Cover"
-                className="w-full h-full object-cover"
+                className="h-52 w-full object-cover"
                 onError={() => setCoverError(true)}
               />
             )}
@@ -742,39 +784,39 @@ export default function RestaurantProfile() {
               <span>{isUploadingCover ? "Uploading..." : "Change Cover"}</span>
             </button>
           </div>
-          <div className="bg-white rounded-b-2xl p-6 relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-5">
-              <div className="relative group -mt-14 z-20">
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  hidden
-                />
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white shadow-md bg-white relative">
-                  {isUploadingAvatar && (
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-20">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="bg-white rounded-b-2xl p-6 relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-5">
+                  <div className="relative group z-20 -mt-12 ml-6">
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      hidden
+                    />
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white relative ring-4 ring-white shadow-lg">
+                      {isUploadingAvatar && (
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-20">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {avatarError || !avatarImage ? (
+                        <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                          <ChefHat className="w-10 h-10 text-slate-400" />
+                        </div>
+                      ) : (
+                        <img src={avatarImage} alt={profile.name} className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
+                      )}
+                      <button
+                        onClick={() => { avatarInputRef.current?.click(); sounds.playPop(); }}
+                        className="absolute inset-0 flex items-center justify-center bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer"
+                        title="Change avatar"
+                      >
+                        <Camera className="w-6 h-6 text-white" />
+                      </button>
                     </div>
-                  )}
-                  {avatarError || !avatarImage ? (
-                    <div className="w-full h-full bg-slate-200 flex items-center justify-center">
-                      <ChefHat className="w-10 h-10 text-slate-400" />
-                    </div>
-                  ) : (
-                    <img src={avatarImage} alt={profile.name} className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
-                  )}
-                  <button
-                    onClick={() => { avatarInputRef.current?.click(); sounds.playPop(); }}
-                    className="absolute inset-0 flex items-center justify-center bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer"
-                    title="Change avatar"
-                  >
-                    <Camera className="w-6 h-6 text-white" />
-                  </button>
-                </div>
-                <div className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-500 ring-3 ring-white" title="Store Status: OPEN" />
-              </div>
+                    <div className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-500 ring-3 ring-white" title="Store Status: OPEN" />
+                  </div>
               <div className="space-y-1">
                 <div className="flex items-center flex-wrap">
                   <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{profile.restaurantName}</h2>
@@ -817,7 +859,6 @@ export default function RestaurantProfile() {
             {[
               { id: "menu", label: "Menu Showcase", icon: Utensils },
               { id: "info", label: "Store Information", icon: Info },
-              { id: "reviews", label: "Customer Reviews", icon: MessageSquare },
             ].map((tab) => {
               const TabIcon = tab.icon;
               return (

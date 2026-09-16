@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import {
   TrendingUp,
   ShoppingBag,
   DollarSign,
   Zap,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -25,6 +26,7 @@ import {
 } from "recharts";
 import { useVendorSocket } from "@/hooks/useVendorSocket";
 import { useVendorAnalytics, type AnalyticsData } from "@/hooks/useVendorAnalytics";
+import { springTransition, staggerContainer, staggerItem } from "@/app/(main)/vendor/components/motion";
 
 function AnimatedCounter({
   value,
@@ -82,34 +84,28 @@ function MetricCard({
   const isPositive = change >= 0;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay }}
-      className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs transition-transform hover:shadow-md"
+      variants={staggerItem}
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.98 }}
+      className="rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-          {title}
-        </span>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
-          {icon}
-        </div>
+        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">{title}</span>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>{icon}</div>
       </div>
-      <div className="mt-3 flex items-baseline justify-between">
-        <span className="text-2xl font-extrabold text-gray-900">
+      <div className="mt-3 flex items-baseline justify-between gap-2">
+        <span className="text-2xl font-black text-slate-900">
           {animate ? (
             <AnimatedCounter value={value} prefix={prefix} duration={1500} />
           ) : (
             <span>{prefix}{value.toLocaleString()}</span>
           )}
         </span>
-        <span
-          className={`text-xs font-bold ${
-            isPositive ? "text-emerald-600" : "text-rose-600"
-          }`}
-        >
-          {isPositive ? "+" : ""}{change}%
-        </span>
+        {change !== 0 && (
+          <span className={`text-xs font-bold ${isPositive ? "text-emerald-600" : "text-rose-600"}`}>
+            {isPositive ? "+" : ""}{change}%
+          </span>
+        )}
       </div>
     </motion.div>
   );
@@ -118,31 +114,22 @@ function MetricCard({
 function LiveVelocityCard({ ordersPerMinute }: { ordersPerMinute: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.3 }}
-      className="relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+      variants={staggerItem}
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.98 }}
+      className="rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-          Live Velocity
-        </span>
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-[#10B981]">
-          <Zap size={18} />
-        </div>
+        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Live Velocity</span>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><Zap size={18} /></div>
       </div>
       <div className="mt-3">
-        <span className="text-2xl font-extrabold text-gray-900">
-          {ordersPerMinute}
-          <span className="text-sm font-semibold text-gray-500">
-            {" "}
-            orders/min
-          </span>
-        </span>
+        <span className="text-2xl font-black text-slate-900">{ordersPerMinute ?? 0}</span>
+        <span className="text-sm font-semibold text-slate-500"> orders/min</span>
       </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-[#00A36C] via-[#00B37E] to-[#4DCA9E]"
+          className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-400"
           initial={{ width: "0%" }}
           animate={{ width: "100%" }}
           transition={{ duration: 1.5, ease: "easeOut" }}
@@ -153,240 +140,31 @@ function LiveVelocityCard({ ordersPerMinute }: { ordersPerMinute: number }) {
 }
 
 function RevenueTrendChart({ data }: { data: AnalyticsData["revenueTrend"] }) {
-  const gradientColors = ["#00A36C", "#00B37E", "#4DCA9E"];
-
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-          Revenue Trend
-        </h2>
-        <span className="text-xs text-gray-400">Last 7 days</span>
+    <div className="rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-black text-slate-800">Revenue Trend</h2>
+          <p className="mt-0.5 text-xs text-slate-400">Last 7 days</p>
+        </div>
+        <span className="text-xs font-bold text-slate-500">Total: ৳{(data?.reduce((s, d) => s + (d.revenue ?? 0), 0) ?? 0 / 1000).toFixed(0)}k</span>
       </div>
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={gradientColors[0]} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={gradientColors[0]} stopOpacity={0.05} />
+              <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#10B981" stopOpacity={0.04} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis
-              dataKey="day"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 11, fill: "#9CA3AF" }}
-              tickMargin={6}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: "#9CA3AF" }}
-              tickCount={5}
-              tickFormatter={(v: number) => `৳${v / 1000}k`}
-              width={50}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(255,255,255,0.95)",
-                border: "1px solid #E5E7EB",
-                borderRadius: "12px",
-                padding: "8px 12px",
-              }}
-              labelStyle={{ fontSize: 11, color: "#374151" }}
-              itemStyle={{ fontSize: 11, color: "#00A36C", padding: 0 }}
-            />
-            <Area
-              type="natural"
-              dataKey="revenue"
-              stroke={gradientColors[0]}
-              strokeWidth={2}
-              fill="url(#revenueGradient)"
-              dot={{ r: 3, fill: gradientColors[0] }}
-              activeDot={{ r: 5, fill: gradientColors[0], stroke: "#ffffff", strokeWidth: 2 }}
-            />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94A3B8" }} tickMargin={6} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94A3B8" }} tickCount={5} tickFormatter={(v) => `৳${v / 1000}k`} width={46} />
+            <Tooltip contentStyle={{ backgroundColor: "rgba(255,255,255,0.96)", border: "1px solid #E2E8F0", borderRadius: 12, padding: "8px 12px" }} labelStyle={{ fontSize: 11, color: "#334155" }} itemStyle={{ fontSize: 11, color: "#059669" }} />
+            <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2.5} fill="url(#revGradient)" dot={{ r: 3, fill: "#10B981" }} activeDot={{ r: 5, fill: "#10B981", stroke: "#ffffff", strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-function CategoryDonutChart({ data }: { data: AnalyticsData["categoryData"] }) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  const centerText = `${data.length} Categories`;
-
-  return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-          Category Split
-        </h2>
-      </div>
-      <div className="h-[240px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(255,255,255,0.95)",
-                border: "1px solid #E5E7EB",
-                borderRadius: "12px",
-                padding: "8px 12px",
-              }}
-              formatter={(value) => [`${value}%`, "Share"]}
-            />
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              paddingAngle={2}
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <text
-              x="50%"
-              y="50%"
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="fill-current"
-            >
-              <tspan className="text-2xl font-bold text-gray-900">{centerText}</tspan>
-              <tspan
-                x="50%"
-                dy="1.2em"
-                className="text-xs fill-gray-400"
-              >
-                {total}% total
-              </tspan>
-            </text>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-2 space-y-1">
-        {data.map((item) => (
-          <div key={item.name} className="flex items-center gap-2 text-xs">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: item.color }}
-            />
-            <span className="text-gray-600">{item.name}</span>
-            <span className="ml-auto font-semibold text-gray-900">{item.value}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OrderVolumeBarChart({ data }: { data: AnalyticsData["orderVolume"] }) {
-  return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-          Order Volume
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">Daily</span>
-          <div className="relative inline-flex h-5 w-10 items-center rounded-full bg-gray-200">
-            <div className="absolute inset-0 flex items-center justify-between px-1">
-              <span className="text-[9px] text-gray-500">D</span>
-              <span className="text-[9px] text-gray-500">W</span>
-            </div>
-            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow" />
-          </div>
-        </div>
-      </div>
-      <div className="h-[220px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis
-              dataKey="day"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 11, fill: "#9CA3AF" }}
-              tickMargin={6}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: "#9CA3AF" }}
-              tickCount={5}
-              width={40}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(255,255,255,0.95)",
-                border: "1px solid #E5E7EB",
-                borderRadius: "12px",
-                padding: "8px 12px",
-              }}
-              labelStyle={{ fontSize: 11, color: "#374151" }}
-              itemStyle={{ fontSize: 11, color: "#00A36C", padding: 0 }}
-            />
-            <Bar
-              dataKey="orders"
-              radius={[6, 6, 0, 0]}
-              fill="#00A36C"
-              barSize={20}
-              animationDuration={1500}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-function TopPerformersList({ data }: { data: AnalyticsData["topPerformers"] }) {
-  const maxRevenue = Math.max(...data.map((item) => item.revenue));
-
-  return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-          Top Performers
-        </h2>
-        <span className="text-xs text-gray-400">{data.length} items</span>
-      </div>
-      <div className="space-y-4">
-        {data.map((item, idx) => {
-          const percentage = (item.revenue / maxRevenue) * 100;
-          return (
-            <div key={item.name} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                    style={{ backgroundColor: `${item.color}20`, color: item.color }}
-                  >
-                    #{idx + 1}
-                  </span>
-                  <span className="font-semibold text-gray-900 text-sm">{item.name}</span>
-                </div>
-                <span className="text-sm font-bold text-gray-900">
-                  ৳{item.revenue.toLocaleString()}
-                </span>
-              </div>
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ backgroundColor: item.color }}
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${percentage}%` }}
-                  transition={{ duration: 0.8, delay: idx * 0.1 }}
-                />
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -399,102 +177,112 @@ export default function AnalyticsDashboard() {
 
   if (isError) {
     return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
-        <p className="text-sm text-rose-700">
-          Unable to load analytics data. Please try again later.
-        </p>
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-sm text-rose-700">
+        <AlertCircle size={28} className="mx-auto mb-2" />
+        Unable to load analytics data. Please try again later.
       </div>
     );
   }
 
   if (isLoading || !analytics) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md px-6 py-16 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="text-center">
-          <Loader2 size={32} className="text-gray-300 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading analytics...</p>
+          <Loader2 size={30} className="mx-auto animate-spin text-teal-500" />
+          <p className="mt-3 text-sm text-slate-500">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
+  const totalWeekly = analytics.revenueTrend?.reduce((s, d) => s + (d.revenue ?? 0), 0) ?? 0;
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Sales & Analytics</h1>
-        <p className="mt-0.5 text-sm text-gray-500">
-          Real-time performance metrics and insights for your restaurant.
-        </p>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.05 }}
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <MetricCard
-          title="Total Sales"
-          value={analytics.totalSales}
-          change={analytics.salesChange}
-          icon={<DollarSign size={18} />}
-          iconBg="bg-emerald-50 text-[#10B981]"
-          prefix="৳"
-          animate={true}
-          delay={0.05}
-        />
-        <MetricCard
-          title="Total Orders"
-          value={analytics.totalOrders}
-          change={analytics.ordersChange}
-          icon={<ShoppingBag size={18} />}
-          iconBg="bg-blue-50 text-blue-600"
-          animate={true}
-          delay={0.1}
-        />
-        <MetricCard
-          title="Avg. Order Value"
-          value={analytics.avgOrderValue}
-          change={analytics.avgOrderChange}
-          icon={<TrendingUp size={18} />}
-          iconBg="bg-amber-50 text-amber-600"
-          prefix="৳"
-          animate={true}
-          delay={0.15}
-        />
-        <LiveVelocityCard ordersPerMinute={analytics.ordersPerMinute} />
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-        className="flex flex-col gap-6 lg:flex-row"
-      >
-        <div className="lg:w-[65%]">
-          <RevenueTrendChart data={analytics.revenueTrend} />
-        </div>
-        <div className="lg:w-[35%]">
-          <CategoryDonutChart data={analytics.categoryData} />
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+      <motion.div variants={staggerItem} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold tracking-[0.2em] text-teal-600 uppercase">Performance insights</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Sales & Analytics</h1>
+          <p className="mt-1 text-sm text-slate-500">Real-time metrics and revenue intelligence for your restaurant.</p>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-        className="flex flex-col gap-6 lg:flex-row"
-      >
-        <div className="lg:w-[50%]">
-          <OrderVolumeBarChart data={analytics.orderVolume} />
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard title="Total Sales" value={(analytics.totalSales ?? 0)} change={analytics.salesChange ?? 0} icon={<DollarSign size={18} />} iconBg="bg-emerald-50 text-emerald-600" prefix="৳" delay={0.05} />
+        <MetricCard title="Total Orders" value={(analytics.totalOrders ?? 0)} change={analytics.ordersChange ?? 0} icon={<ShoppingBag size={18} />} iconBg="bg-sky-50 text-sky-600" delay={0.1} />
+        <MetricCard title="Avg. Order Value" value={(analytics.avgOrderValue ?? 0)} change={analytics.avgOrderChange ?? 0} icon={<TrendingUp size={18} />} iconBg="bg-amber-50 text-amber-600" prefix="৳" delay={0.15} />
+        <LiveVelocityCard ordersPerMinute={analytics.ordersPerMinute ?? 0} />
+      </motion.div>
+
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <RevenueTrendChart data={analytics.revenueTrend ?? []} />
         </div>
-        <div className="lg:w-[50%]">
-          <TopPerformersList data={analytics.topPerformers} />
+        <div className="rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-black text-slate-800">Revenue Trend</h2>
+            <span className="text-xs font-bold text-slate-500">Weekly</span>
+          </div>
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={analytics.revenueTrend ?? []} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="areaDash" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0D9488" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#0D9488" stopOpacity={0.04} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94A3B8" }} tickMargin={6} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94A3B8" }} tickCount={5} tickFormatter={(v) => `৳${v / 1000}k`} width={46} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(255,255,255,0.96)", border: "1px solid #E2E8F0", borderRadius: 12 }} labelStyle={{ fontSize: 11, color: "#334155" }} itemStyle={{ fontSize: 11, color: "#0D9488" }} />
+                <Area type="monotone" dataKey="revenue" stroke="#0D9488" strokeWidth={2} fill="url(#areaDash)" dot={{ r: 3, fill: "#0D9488" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </motion.div>
+
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3 rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-black text-slate-800">Order Volume</h2>
+            <span className="text-xs font-bold text-slate-500">Daily</span>
+          </div>
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analytics.orderVolume ?? []} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94A3B8" }} tickMargin={6} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94A3B8" }} tickCount={5} width={40} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(255,255,255,0.96)", border: "1px solid #E2E8F0", borderRadius: 12 }} />
+                <Bar dataKey="orders" radius={[6, 6, 0, 0]} fill="#10B981" barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+          <h2 className="text-sm font-black text-slate-800 mb-4">Top Performers</h2>
+          <div className="space-y-3">
+            {(analytics.topPerformers ?? []).map((item, idx) => {
+              const maxRev = Math.max(...(analytics.topPerformers ?? []).map((p) => p.revenue));
+              const pct = maxRev > 0 ? Math.round((item.revenue / maxRev) * 100) : 0;
+              return (
+                <div key={item.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ backgroundColor: `${item.color}20`, color: item.color }}>#{idx + 1}</span>
+                      <span className="font-semibold text-sm text-slate-900">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-900">৳{(item.revenue ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <motion.div className="h-full rounded-full" style={{ backgroundColor: item.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, delay: idx * 0.1 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
     </motion.div>

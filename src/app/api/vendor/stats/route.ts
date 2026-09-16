@@ -4,6 +4,9 @@ import { verifySessionCookie } from "@/lib/session";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { Restaurant } from "@/models/Restaurant";
+import { MenuItem } from "@/models/MenuItem";
+import { Order } from "@/models/Order";
+import { Review } from "@/models/Review";
 
 export async function GET(req: NextRequest) {
   const sessionCookie = req.cookies.get("session")?.value;
@@ -16,99 +19,120 @@ export async function GET(req: NextRequest) {
   const user = await User.findOne({ uid: decoded.uid }).lean();
   if (!user || user.role !== "restaurant") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }  const [restaurants] = await Promise.all([
-    Restaurant.find({ status: "approved" }).lean(),
+  }
+
+  const restaurant = await Restaurant.findOne({ userId: user._id }).lean();
+  if (!restaurant) {
+    return NextResponse.json({
+      todaySales: 0,
+      ordersCount: 0,
+      pendingCount: 0,
+      activeCount: 0,
+      rating: 0,
+      salesTrend: [],
+      totalWeekly: 0,
+      bestSellers: [],
+      ratingBreakdown: [
+        { stars: 5, percentage: 0 },
+        { stars: 4, percentage: 0 },
+        { stars: 3, percentage: 0 },
+        { stars: 2, percentage: 0 },
+        { stars: 1, percentage: 0 },
+      ],
+      recentOrders: [],
+      totalRestaurants: 0,
+    });
+  }
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 6);
+
+  const [
+    todayOrders,
+    weekOrders,
+    recentOrdersData,
+    menuItems,
+    reviews,
+  ] = await Promise.all([
+    Order.find({
+      merchantId: restaurant._id,
+      createdAt: { $gte: todayStart },
+    }).lean(),
+    Order.find({
+      merchantId: restaurant._id,
+      createdAt: { $gte: weekStart },
+    }).lean(),
+    Order.find({ merchantId: restaurant._id }).sort({ createdAt: -1 }).limit(10).lean(),
+    MenuItem.find({ vendorId: restaurant._id }).lean(),
+    Review.find({ merchantId: restaurant._id }).lean(),
   ]);
 
-  const totalRestaurants = restaurants.length;
+  const todaySales = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const ordersCount = todayOrders.length;
+  const pendingCount = todayOrders.filter((o) => o.status === "new").length;
+  const activeCount = todayOrders.filter((o) =>
+    ["preparing", "ready", "picked_up"].includes(o.status)
+  ).length;
 
-  const dashboardStats = {
-    todaySales: 24850,
-    ordersCount: 186,
-    pendingCount: 12,
-    activeCount: 24,
-    rating: 4.8,
-    salesTrend: [
-      { day: "Mon", revenue: 18500 },
-      { day: "Tue", revenue: 22300 },
-      { day: "Wed", revenue: 19800 },
-      { day: "Thu", revenue: 26700 },
-      { day: "Fri", revenue: 28900 },
-      { day: "Sat", revenue: 24800 },
-      { day: "Sun", revenue: 19200 },
-    ],
-    totalWeekly: 148500,
-    bestSellers: [
-      {
-        id: "1",
-        name: "Signature Chicken Burger",
-        orders: 48,
-        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=200",
-      },
-      {
-        id: "2",
-        name: "Wood-fired Pepperoni Pizza",
-        orders: 32,
-        image: "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&q=80&w=200",
-      },
-      {
-        id: "3",
-        name: "Spicy Wings Combo",
-        orders: 24,
-        image: "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&q=80&w=200",
-      },
-    ],
-    ratingBreakdown: [
-      { stars: 5, percentage: 80 },
-      { stars: 4, percentage: 15 },
-      { stars: 3, percentage: 3 },
-      { stars: 2, percentage: 1 },
-      { stars: 1, percentage: 1 },
-    ],
-    recentOrders: [
-      {
-        id: "#FG10234",
-        customer: "Rahim A.",
-        items: "2x Classic Burger, 1x Fries",
-        amount: 850,
-        time: "14:32",
-        status: "new",
-      },
-      {
-        id: "#FG10231",
-        customer: "Nahid R.",
-        items: "1x Margherita Pizza",
-        amount: 450,
-        time: "14:18",
-        status: "preparing",
-      },
-      {
-        id: "#FG10229",
-        customer: "Sadia K.",
-        items: "3x Chicken Wrap, 1x Cola",
-        amount: 620,
-        time: "13:55",
-        status: "accepted",
-      },
-      {
-        id: "#FG10227",
-        customer: "Tanvir M.",
-        items: "1x Spicy Wings",
-        amount: 380,
-        time: "13:22",
-        status: "delivered",
-      },
-      {
-        id: "#FG10225",
-        customer: "Farzana S.",
-        items: "2x Brownie, 1x Milkshake",
-        amount: 520,
-        time: "13:10",
-        status: "delivered",
-      },
-    ],
-    totalRestaurants,
-  };
+  const rating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0;
 
-  return NextResponse.json(dashboardStats);
+  const ratingBreakdown = [5, 4, 3, 2, 1].map((stars) => {
+    const count = reviews.filter((r) => r.rating === stars).length;
+    const percentage = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+    return { stars, percentage };
+  });
+
+  const salesTrend = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(weekStart);
+    day.setDate(day.getDate() + (6 - i));
+    const dayEnd = new Date(day);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const dayOrders = weekOrders.filter((o) => {
+      const created = new Date(o.createdAt);
+      return created >= day && created < dayEnd;
+    });
+    const revenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    salesTrend.push({ day: dayNames[day.getDay()], revenue });
+  }
+
+  const totalWeekly = weekOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+  const bestSellers = menuItems
+    .sort((a, b) => (b.ordersCount || 0) - (a.ordersCount || 0))
+    .slice(0, 3)
+    .map((item) => ({
+      id: item._id.toString(),
+      name: item.name,
+      orders: item.ordersCount || 0,
+      image: item.image || "",
+    }));
+
+  const recentOrders = recentOrdersData.map((o) => ({
+    id: o.orderId,
+    customer: o.customer?.name || "Unknown",
+    items: o.items?.map((i) => `${i.quantity}x ${i.name}`).join(", ") || "",
+    amount: o.total || 0,
+    time: new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    status: o.status,
+  }));
+
+  return NextResponse.json({
+    todaySales,
+    ordersCount,
+    pendingCount,
+    activeCount,
+    rating: Number(rating.toFixed(1)),
+    salesTrend,
+    totalWeekly,
+    bestSellers,
+    ratingBreakdown,
+    recentOrders,
+    totalRestaurants: 1,
+  });
 }
