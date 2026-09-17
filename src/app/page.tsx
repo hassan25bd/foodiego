@@ -6,7 +6,6 @@ import SpecialOffers from "@/components/SpecialOffers";
 import AIRecommendation from "@/components/AIRecommendation";
 import HowItWorksSection from "@/components/HowItWorks";
 import FAQSection from "@/components/FAQ";
-
 import Footer from "@/components/Share/Footer";
 import { getOptionalSession } from "@/lib/dal";
 
