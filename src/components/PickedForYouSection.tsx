@@ -32,16 +32,16 @@ export const PickedForYouSection: React.FC = () => {
   }, []);
 
   return (
-    <section className="w-full bg-[#FAF7EE] py-16 lg:py-24">
+    <section className="w-full bg-transparent py-16 lg:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header Area */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 text-left">
           <div>
-            <p className="text-xs font-bold text-emerald-800 tracking-widest uppercase mb-2">
+            <p className="text-xs font-bold text-pink-800 tracking-widest uppercase mb-2">
               CURATED, NOT CROWDED
             </p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-green-900 tracking-tight mb-2">
               Restaurants worth discovering
             </h2>
             <p className="text-sm sm:text-base text-gray-600 font-normal">
@@ -51,7 +51,7 @@ export const PickedForYouSection: React.FC = () => {
 
           <Link
             href="/restaurants"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-800 hover:text-emerald-950 transition-colors shrink-0 mb-1"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-pink-800 hover:text-green-600 transition-colors shrink-0 mb-1"
           >
             View All Restaurants
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
