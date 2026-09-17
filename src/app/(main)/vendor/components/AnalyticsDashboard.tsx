@@ -189,7 +189,7 @@ export default function AnalyticsDashboard() {
       <div className="flex items-center justify-center rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-md px-6 py-16 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="text-center">
           <Loader2 size={30} className="mx-auto animate-spin text-teal-500" />
-          <p className="mt-3 text-sm text-slate-500">Loading analytics...</p>
+          <p className="mt-3 text-sm text-slate-500">Loading analytics.</p>
         </div>
       </div>
     );
