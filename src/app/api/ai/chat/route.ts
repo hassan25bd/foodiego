@@ -79,17 +79,32 @@ async function callGemini(
   throw new Error("All Gemini models failed");
 }
 
+function getLocalReply(message: string): string {
+  const normalizedMessage = message.toLowerCase();
+
+  if (/(order|track|cancel|reorder|history)/.test(normalizedMessage)) {
+    return "You can view your orders from your account dashboard. Open an order to check its status, delivery details, or available actions.";
+  }
+
+  if (/(deliver|rider|arrive|shipping)/.test(normalizedMessage)) {
+    return "Delivery estimates and rider updates are shown on the order tracking page after checkout. Typical delivery takes 30-40 minutes, depending on the restaurant and distance.";
+  }
+
+  if (/(pay|card|promo|discount|refund|wallet|money)/.test(normalizedMessage)) {
+    return "FoodieGo supports the payment methods shown during checkout. Promo codes can be applied before placing an order, and refund requests can be made from the order details page.";
+  }
+
+  if (/(food|eat|meal|burger|pizza|restaurant|recommend|dish|menu)/.test(normalizedMessage)) {
+    return "Browse the Foods and Restaurants pages to discover popular dishes, top-rated restaurants, and available offers. You can save favorites and add dishes directly to your cart.";
+  }
+
+  return "I can help with FoodieGo dishes, restaurants, orders, delivery, payments, and promotions. What would you like to know?";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const groqKey = process.env.GROQ_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-
-    if (!groqKey && !geminiKey) {
-      return NextResponse.json(
-        { error: "AI service is not configured on the server." },
-        { status: 503 },
-      );
-    }
 
     const body = await req.json();
     const { message, chatHistory = [] } = body;
@@ -123,10 +138,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(
-      { error: "AI service is temporarily unavailable." },
-      { status: 503 },
-    );
+    return NextResponse.json({ reply: getLocalReply(message) });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     console.error("AI Backend Error:", errMsg);
