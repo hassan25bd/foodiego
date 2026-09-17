@@ -4,10 +4,12 @@ import WhatAreYouCraving from "@/components/WhatAreYouCraving";
 import PickedForYouSection from "@/components/PickedForYouSection";
 import SpecialOffers from "@/components/SpecialOffers";
 import AIRecommendation from "@/components/AIRecommendation";
-import FAQSection from "@/components/FAQ";
 import HowItWorksSection from "@/components/HowItWorks";
+import FAQSection from "@/components/FAQ";
+
 import Footer from "@/components/Share/Footer";
 import { getOptionalSession } from "@/lib/dal";
+
 
 
 
@@ -22,8 +24,8 @@ export default async function Home() {
       <PickedForYouSection />
       <SpecialOffers />
       <AIRecommendation />
-      <FAQSection />
       <HowItWorksSection />
+      <FAQSection />
       <Footer />
     </main>
   );
