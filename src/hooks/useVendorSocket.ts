@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { queryClient } from "@/lib/queryClient";
 import type { TicketMessage, TicketDetail } from "@/hooks/useSupportTickets";
@@ -7,7 +7,7 @@ import type { ActiveDeliveriesResponse } from "@/hooks/useDeliveryManagement";
 import type { ReviewData } from "@/hooks/useReviews";
 import type { PaymentsOverview, PaymentTransaction } from "@/app/api/v1/vendor/payments/route";
 
-export type VendorSocketStatus = "connecting" | "connected" | "disconnected" | "error";
+export type VendorSocketStatus = "connecting" | "connected" | "disconnected" | "error" | "polling";
 
 export interface NewOrderPayload {
   id: string;
@@ -143,9 +143,51 @@ const singletonState = {
   hasLoggedError: false,
   reconnectTimeout: null as NodeJS.Timeout | null,
   subscribers: 0,
+  pollingInterval: null as NodeJS.Timeout | null,
+  isPolling: false,
 };
 
 const maxReconnectAttempts = 10;
+const POLLING_INTERVAL = 15000; // 15 seconds
+
+const startPolling = () => {
+  if (singletonState.isPolling || singletonState.pollingInterval) return;
+  singletonState.isPolling = true;
+  singletonState.status = "polling";
+  
+  const poll = async () => {
+    try {
+      const res = await fetch("/api/vendor/orders", { credentials: "include" });
+      if (res.ok) {
+        const orders = await res.json();
+        const existing = queryClient.getQueryData<NewOrderPayload[]>(["orders"]);
+        if (existing) {
+          const newOrders = orders.filter((o: NewOrderPayload) => !existing.some((e) => e.id === o.id));
+          if (newOrders.length > 0) {
+            queryClient.setQueryData(["orders"], [...newOrders, ...existing]);
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[VendorSocket] Polling failed:", e);
+    }
+  };
+
+  poll(); // Initial poll
+  singletonState.pollingInterval = setInterval(poll, POLLING_INTERVAL);
+};
+
+const stopPolling = () => {
+  if (singletonState.pollingInterval) {
+    clearInterval(singletonState.pollingInterval);
+    singletonState.pollingInterval = null;
+  }
+  singletonState.isPolling = false;
+  if (singletonState.status === "polling") {
+    singletonState.status = "disconnected";
+  }
+};
 
 const connect = () => {
   singletonState.socket = io(WS_URL, {
@@ -164,14 +206,16 @@ const connect = () => {
     singletonState.status = "connected";
     singletonState.reconnectAttempts = 0;
     singletonState.hasLoggedError = false;
+    stopPolling(); // Stop polling when connected
 
     socket.emit("subscribe", { roles: ["restaurant"] });
   });
 
   socket.on("disconnect", (reason) => {
     singletonState.status = "disconnected";
-    console.warn(`[VendorSocket] Disconnected: ${reason}. Retrying...`);
+    console.warn(`[VendorSocket] Disconnected: ${reason}. Starting polling fallback...`);
 
+    // Start polling as fallback after disconnect
     if (singletonState.reconnectAttempts < maxReconnectAttempts) {
       const delay = Math.min(1000 * 2 ** singletonState.reconnectAttempts, 10000);
       singletonState.reconnectAttempts += 1;
@@ -179,15 +223,21 @@ const connect = () => {
       singletonState.reconnectTimeout = setTimeout(() => {
         connect();
       }, delay);
+    } else {
+      // Max reconnect attempts reached, switch to polling
+      startPolling();
     }
   });
 
   socket.on("connect_error", (error) => {
     if (!singletonState.hasLoggedError) {
-      console.warn("[VendorSocket] Socket.IO connection error — retrying in background. Live updates disabled until connected.");
+      console.warn("[VendorSocket] Socket.IO connection error — using polling fallback. Live updates disabled until connected.");
       singletonState.hasLoggedError = true;
     }
     singletonState.status = "error";
+    
+    // Start polling immediately on connection error
+    startPolling();
     void error;
   });
 
@@ -263,9 +313,12 @@ export function useVendorSocket() {
       singletonState.subscribers -= 1;
       clearInterval(interval);
 
-      if (singletonState.subscribers === 0 && singletonState.socket) {
-        singletonState.socket.close();
-        singletonState.socket = null;
+      if (singletonState.subscribers === 0) {
+        if (singletonState.socket) {
+          singletonState.socket.close();
+          singletonState.socket = null;
+        }
+        stopPolling();
         singletonState.status = "disconnected";
         if (singletonState.reconnectTimeout) {
           clearTimeout(singletonState.reconnectTimeout);
@@ -434,5 +487,6 @@ export function useVendorSocket() {
     emitOrderAccept,
     emitOrderReject,
     isConnected: status === "connected",
+    isPolling: status === "polling",
   };
 }

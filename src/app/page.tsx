@@ -4,6 +4,7 @@ import PickedForYouSection from "@/components/PickedForYouSection";
 import WhatAreYouCraving from "@/components/WhatAreYouCraving";
 import { Navbar } from "@/components/Share/Navbar";
 import Footer from "@/components/Share/Footer";
+import AIAssistantWidget from "@/components/AIAssistantWidget";
 import { getOptionalSession } from "@/lib/dal";
 import FAQSection from "@/components/FAQ";
 
@@ -19,6 +20,7 @@ export default async function Home() {
       <FAQSection />
       <HowItWorksSection />
       <Footer />
+      <AIAssistantWidget />
     </main>
   );
 }

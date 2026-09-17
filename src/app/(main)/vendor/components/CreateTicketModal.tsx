@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { useCreateTicket } from "@/hooks/useSupportTickets";
 import type { CreateTicketInput, TicketCategory } from "@/hooks/useSupportTickets";

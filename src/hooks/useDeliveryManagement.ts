@@ -9,10 +9,12 @@ export interface Delivery {
   assignedRider: string;
   riderId?: string;
   riderAvatar?: string;
-  status: "Picked Up" | "Assigning" | "Delayed" | "In Transit" | "Delivered";
+  status: "Picked Up" | "Assigning" | "Delayed" | "In Transit" | "Delivered" | "Cancelled";
   eta: string;
   total: number;
   items: number;
+  completedAt?: string;
+  cancelledAt?: string;
   delayReason?: string;
   lat: number;
   lng: number;

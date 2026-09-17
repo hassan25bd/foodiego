@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { motion } from "motion/react";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -18,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { staggerContainer, staggerItem, springTransition } from "@/app/(main)/vendor/components/motion";
 
 const sidebarNav = [
   { label: "Dashboard", href: "/vendor?tab=dashboard", icon: LayoutDashboard, tab: "dashboard" },
@@ -36,98 +38,88 @@ export default function VendorSidebar() {
   const { logoutUser } = useApp();
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-[#E5E7EB] lg:bg-white lg:shadow-sm">
-      <div className="p-6 border-b border-[#E5E7EB]">
-        <Link href="/vendor?tab=dashboard" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#10B981] text-white font-bold text-xl">
-            F
-          </div>
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-slate-200/70 bg-white/85 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)] backdrop-blur-md lg:flex">
+      <div className="flex items-center gap-3 px-6 py-7">
+        <Link href="/vendor?tab=dashboard" className="group flex items-center gap-3">
+          <motion.div
+            whileHover={{ rotate: -6, scale: 1.06 }}
+            whileTap={{ scale: 0.94 }}
+            transition={springTransition}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
+          >
+            <span className="text-lg font-black">F</span>
+          </motion.div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-[#10B981]">FoodieGo</h1>
-            <p className="text-xs text-gray-500">Vendor Admin</p>
+            <h1 className="text-base font-black tracking-tight text-slate-900">FoodieGo</h1>
+            <p className="text-[11px] font-semibold text-slate-500">Vendor Admin</p>
           </div>
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-3">
+      <nav className="flex-1 overflow-y-auto px-4 py-2">
+        <motion.ul variants={staggerContainer} initial="initial" animate="animate" className="space-y-1">
           {sidebarNav.map((item) => {
+            const Icon = item.icon;
             const isActive = activeTab === item.tab;
             return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    isActive
-                      ? "bg-emerald-50 text-[#10B981] border-l-4 border-[#10B981]"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <item.icon
-                    size={18}
-                    className={isActive ? "text-[#10B981]" : "text-gray-400"}
-                  />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
+              <motion.li key={item.href} variants={staggerItem}>
+                <motion.div whileHover={{ x: 3 }} whileTap={{ scale: 0.98 }}>
+                  <Link href={item.href} className={`relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${isActive ? "text-emerald-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}>
+                    {isActive && (
+                      <motion.span
+                        layoutId="vendor-nav-pill"
+                        transition={springTransition}
+                        className="absolute inset-0 rounded-xl bg-emerald-50 shadow-sm"
+                      />
+                    )}
+                    <Icon size={18} className={`relative ${isActive ? "text-emerald-600" : "text-slate-400"}`} />
+                    <span className="relative">{item.label}</span>
+                  </Link>
+                </motion.div>
+              </motion.li>
             );
           })}
-
-            <li>
-              <Link
-                href="/"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-[#10B981] bg-emerald-50 hover:bg-emerald-100 transition-all border border-emerald-100"
-              >
-                <Globe size={18} />
-                <span>Return to Main Website</span>
-              </Link>
-            </li>
-        </ul>
+        </motion.ul>
       </nav>
 
-       <div className="p-4 border-t border-[#E5E7EB]">
-         <ul className="space-y-1">
-           <li>
-             <Link
-               href="/vendor/profile"
-               className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-             >
-               <User size={18} className="text-gray-400" />
-               <span>Restaurant Profile</span>
-             </Link>
-           </li>
-           <li className="relative">
-             <Link
-               href="/vendor/notifications"
-               className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-             >
-               <Bell size={18} className="text-gray-400" />
-               <span>Notifications</span>
-               <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-[#EF4444] text-[10px] font-bold text-white">
-                 3
-               </span>
-             </Link>
-           </li>
-          <li>
-            <Link
-              href="/vendor/settings"
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <Settings size={18} className="text-gray-400" />
-              <span>Settings</span>
-            </Link>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() => logoutUser()}
-              className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <LogOut size={18} className="text-red-400" />
-              <span>Logout</span>
-            </button>
-          </li>
-        </ul>
+      <div className="space-y-1 border-t border-slate-200/70 px-4 py-4">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+        >
+          <Globe size={18} className="text-emerald-500" />
+          <span>Return to Main Website</span>
+        </Link>
+        <Link
+          href="/vendor/profile"
+          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          <User size={18} className="text-slate-400" />
+          <span>Restaurant Profile</span>
+        </Link>
+        <Link
+          href="/vendor/notifications"
+          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          <Bell size={18} className="text-slate-400" />
+          <span>Notifications</span>
+          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white">3</span>
+        </Link>
+        <Link
+          href="/vendor/settings"
+          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          <Settings size={18} className="text-slate-400" />
+          <span>Settings</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => logoutUser()}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+        >
+          <LogOut size={18} className="text-rose-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

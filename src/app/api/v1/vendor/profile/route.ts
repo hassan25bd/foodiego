@@ -168,6 +168,13 @@ export async function PATCH(req: NextRequest) {
     ownerNidUrl: body.ownerNidUrl,
   };
 
+  // Filter out undefined values to avoid overwriting with undefined
+  Object.keys(updateData).forEach((key) => {
+    if (updateData[key] === undefined) {
+      delete updateData[key];
+    }
+  });
+
   const existing = await Restaurant.findOne({ userId: user._id });
 
   let restaurant;

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition, Suspense, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import {
   User,
   Mail,

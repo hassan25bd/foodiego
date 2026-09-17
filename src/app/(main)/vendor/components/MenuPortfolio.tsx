@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ShoppingBag,
-  Filter,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -14,406 +13,358 @@ import {
   UtensilsCrossed,
   PauseCircle,
   CheckCircle,
+  Tag,
+  LoaderCircle,
+  AlertCircle,
+  LayoutGrid,
+  List,
+  Grid2x2,
+  Pizza,
+  CupSoda,
+  Cake,
+  Cookie,
+  Popcorn,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   useMenuItems,
-  useCategoryMetrics,
   useToggleMenuItem,
 } from "@/hooks/useVendorMenu";
 import type { MenuItem } from "@/hooks/useVendorMenu";
 import AddMenuItemModal from "@/app/(main)/vendor/components/AddMenuItemModal";
+import { springTransition, staggerContainer, staggerItem } from "@/app/(main)/vendor/components/motion";
 
-const categoryIcons: Record<string, string> = {
-  Burgers: "🍔",
-  Pizza: "🍕",
-  Drinks: "🥤",
-  Desserts: "🍰",
+const categoryMeta: Record<string, { label: string; icon: typeof UtensilsCrossed; badgeClass: string }> = {
+  Burgers: { label: "Burgers", icon: UtensilsCrossed, badgeClass: "bg-gradient-to-br from-emerald-500 to-teal-600" },
+  Pizza: { label: "Pizza", icon: Pizza, badgeClass: "bg-gradient-to-br from-amber-500 to-orange-600" },
+  Drinks: { label: "Drinks", icon: CupSoda, badgeClass: "bg-gradient-to-br from-teal-500 to-cyan-600" },
+  Desserts: { label: "Desserts", icon: Cake, badgeClass: "bg-gradient-to-br from-rose-500 to-pink-600" },
+  Sides: { label: "Sides", icon: Cookie, badgeClass: "bg-gradient-to-br from-indigo-500 to-purple-600" },
+  Snacks: { label: "Snacks", icon: Popcorn, badgeClass: "bg-gradient-to-br from-indigo-500 to-purple-600" },
 };
 
-const statusTabs = [
-  { id: "all", label: "All Items" },
-  { id: "categories", label: "Categories" },
-  { id: "add", label: "+ Add New Item" },
-];
-
 export default function MenuPortfolio() {
-  const [activeTab, setActiveTab] = useState<"all" | "categories" | "add">("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [density, setDensity] = useState<"compact" | "normal">("normal");
 
   const { data: menuData, isLoading, isError, error } = useMenuItems({
+    category: selectedCategory === "all" ? undefined : selectedCategory,
     search: searchQuery || undefined,
     page,
   });
-
   const toggleMutation = useToggleMenuItem();
+  const allItems: MenuItem[] = menuData?.items ?? [];
 
-  const items: MenuItem[] = menuData?.items || [];
-  const metrics = useCategoryMetrics(items);
+  // Filter items based on selected category
+  const filteredItems = selectedCategory === "all"
+    ? allItems
+    : allItems.filter((item) => item.category.toLowerCase() === selectedCategory.toLowerCase());
 
   const handleToggle = (item: MenuItem) => {
     if (toggleMutation.isPending && toggleMutation.variables === item._id) return;
     toggleMutation.mutate(item._id);
   };
 
+  const handleCategoryClick = (categoryName: string) => {
+    setSelectedCategory((prev) => (prev === categoryName ? "all" : categoryName));
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.05 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+      <motion.div variants={staggerItem} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Menu Portfolio</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Manage your offerings, categories, and item availability.
-          </p>
+          <p className="text-xs font-bold tracking-[0.2em] text-rose-500 uppercase">Catalog workspace</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Menu Management</h1>
+          <p className="mt-1 text-sm text-slate-500">Curate your offerings, control availability, and spotlight what sells.</p>
         </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex w-fit items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-900/10 transition-colors hover:bg-slate-800"
+        >
+          <Plus size={16} />
+          Add New Item
+        </button>
+      </motion.div>
 
-        <div className="flex items-center gap-2">
+      <motion.div variants={staggerItem} className="flex items-center gap-2 overflow-x-auto border-b border-slate-200/70 pb-1">
+        <div className="relative ml-auto hidden sm:block">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search menu..."
+            value={searchQuery}
+            onChange={(event) => { setSearchQuery(event.target.value); setPage(1); }}
+            className="w-52 rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 ml-4 sm:ml-auto p-1 bg-slate-100/50 rounded-lg border border-slate-200/50">
           <button
-            onClick={() => setActiveTab("add")}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => setViewMode("table")}
+            className={`p-2 rounded transition-colors ${viewMode === "table" ? "bg-white shadow-sm text-rose-600" : "text-slate-500 hover:text-slate-700"}`}
+            aria-label="Table view"
           >
-            <Filter size={15} />
-            <span>Filter</span>
+            <List size={16} />
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-sm font-semibold text-white hover:bg-[#059669] transition-colors shadow-md shadow-[#10B981]/20"
+            onClick={() => setViewMode("grid")}
+            className={`p-2 rounded transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-rose-600" : "text-slate-500 hover:text-slate-700"}`}
+            aria-label="Grid view"
           >
-            <Plus size={16} />
-            <span>+ Add New Item</span>
+            <LayoutGrid size={16} />
           </button>
+          <div className="w-px h-6 bg-slate-300 mx-1" />
+          <select
+            value={density}
+            onChange={(e) => setDensity(e.target.value as "compact" | "normal")}
+            className="px-2 py-1 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-200"
+            aria-label="Row density"
+          >
+            <option value="compact">Compact</option>
+            <option value="normal">Normal</option>
+          </select>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="flex gap-2 overflow-x-auto no-scrollbar"
-      >
-        {statusTabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-                isActive
-                  ? "bg-[#10B981] text-white shadow-md"
-                  : "bg-white text-gray-600 hover:bg-gray-50 border border-[#E5E7EB]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </motion.div>
+      <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-6">
+        {/* Category Overview Grid - Compact Horizontal Pill Cards */}
+        <motion.div variants={staggerContainer} className="flex flex-wrap gap-3">
+          {Object.entries(categoryMeta).map(([catName, meta]) => {
+            const allItemsForCat = allItems.filter((i) => i.category === catName);
+            const totalCount = allItemsForCat.length;
+            const activeCount = allItemsForCat.filter((i) => i.isActive).length;
+            const isSelected = selectedCategory === catName;
+            const MetaIcon = meta.icon;
 
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.05 }}
-      >
-        {activeTab === "all" && (
-          <>
-            <motion.div
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.15 }}
-            >
-              {metrics.map((cat, idx) => (
-                <motion.div
-                  key={cat.name}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.15 + idx * 0.03 }}
-                  className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl">{categoryIcons[cat.name] || "📦"}</span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                        cat.activeItems > 0
-                          ? "bg-emerald-50 text-[#10B981]"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
-                    >
-                      {cat.activeItems > 0 ? `${cat.activeItems} Active` : "Inactive"}
-                    </span>
-                  </div>
-                  <h3 className="mt-2 text-lg font-bold text-gray-900">{cat.name}</h3>
-                  <p className="text-xs text-gray-500">{cat.activeItems} active items</p>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            <motion.div
-              className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white shadow-xs overflow-hidden"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25 }}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-[#E5E7EB]">
-                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                  Item Directory
-                </h2>
-                <div className="relative w-64">
-                  <Search
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search menu..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-full rounded-full border border-[#E5E7EB] bg-gray-50 pl-9 pr-3 py-2 text-sm text-gray-800 focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20"
-                  />
-                </div>
-              </div>
-
-              {isError && (
-                <div className="p-4 text-center text-sm text-rose-600">
-                  {(error as Error)?.message || "Failed to load menu items"}
-                </div>
-              )}
-
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-[#10B981] border-t-transparent"></div>
-                </div>
-              ) : (
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#E5E7EB] bg-gray-50/60">
-                      <th className="px-4 py-3 font-bold text-gray-400 uppercase tracking-wider">ITEM DETAILS</th>
-                      <th className="px-4 py-3 font-bold text-gray-400 uppercase tracking-wider">CATEGORY</th>
-                      <th className="px-4 py-3 text-right font-bold text-gray-400 uppercase tracking-wider">PRICE</th>
-                      <th className="px-4 py-3 font-bold text-gray-400 uppercase tracking-wider">PERFORMANCE</th>
-                      <th className="px-4 py-3 text-center font-bold text-gray-400 uppercase tracking-wider">AVAILABILITY</th>
-                      <th className="px-4 py-3 text-center font-bold text-gray-400 uppercase tracking-wider">ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    <AnimatePresence>
-                      {items.map((item) => (
-                        <motion.tr
-                          key={item._id}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 8 }}
-                          transition={{ duration: 0.15 }}
-                          className="border-b hover:bg-gray-50/50 transition-colors"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-100 overflow-hidden">
-                                {item.image ? (
-                                  <Image
-                                    src={item.image}
-                                    alt={item.name}
-                                    width={40}
-                                    height={40}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-gray-400">
-                                    <UtensilsCrossed size={16} />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-gray-900">{item.name}</p>
-                                {item.addons && item.addons.length > 0 && (
-                                  <p className="text-xs text-gray-400 mt-0.5">
-                                    +{item.addons.length} add-on{item.addons.length > 1 ? "s" : ""}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-700">
-                              {categoryIcons[item.category] || "📦"}
-                              <span>{item.category}</span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="font-semibold text-gray-900">৳{item.price.toLocaleString()}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-700">{item.ordersCount} Orders</span>
-                              <span className="text-xs text-gray-500">•</span>
-                              <span className="inline-flex items-center gap-0.5 text-xs font-medium text-yellow-600">
-                                ⭐ {item.rating}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <label className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={item.isActive}
-                                onChange={() => handleToggle(item)}
-                                className="sr-only"
-                                aria-label={`${item.isActive ? "Deactivate" : "Activate"} ${item.name}`}
-                              />
-                              <span
-                                className={`inline-block h-full w-full rounded-full transition-colors ${
-                                  item.isActive ? "bg-[#10B981]" : "bg-gray-300"
-                                }`}
-                              />
-                              <span
-                                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transform transition-transform ${
-                                  item.isActive ? "translate-x-4" : ""
-                                }`}
-                              />
-                            </label>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleToggle(item)}
-                                className={`p-1 rounded-lg transition-colors ${
-                                  item.isActive
-                                    ? "text-gray-600 hover:bg-gray-100"
-                                    : "text-rose-600 hover:bg-rose-100"
-                                }`}
-                                aria-label={item.isActive ? "Deactivate" : "Activate"}
-                              >
-                                {item.isActive ? <PauseCircle size={14} /> : <CheckCircle size={14} />}
-                              </button>
-                              <Link
-                                href={`/vendor/orders`}
-                                className="p-1 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                aria-label="View orders for this item"
-                              >
-                                <ShoppingBag size={14} />
-                              </Link>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-
-                    {!isLoading && items.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center">
-                          <div className="flex flex-col items-center gap-2 text-gray-400">
-                            <ShoppingBag size={32} />
-                            <p className="text-sm">No menu items found.</p>
-                            <button
-                              onClick={() => setShowAddModal(true)}
-                              className="text-xs font-semibold text-[#10B981] hover:text-[#059669]"
-                            >
-                              Create your first item
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </motion.div>
-
-            {menuData && menuData.total > 0 && (
+            return (
               <motion.div
-                className="flex items-center justify-between py-4"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: 0.1 }}
+                key={catName}
+                variants={staggerItem}
+                whileHover={{ y: -2, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleCategoryClick(catName)}
+                className={`group relative p-3.5 bg-white/90 backdrop-blur-md rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 min-w-[160px] ${
+                  isSelected
+                    ? "border-emerald-500/60 bg-emerald-50/30 shadow-[0_0_0_1px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500/20"
+                    : "border-slate-200/80 hover:border-emerald-500 hover:shadow-sm"
+                }`}
               >
-                <p className="text-sm text-gray-500">
-                  Showing {Math.min((page - 1) * (menuData.limit || 20) + 1, menuData.total)}-
-                  {Math.min(page * (menuData.limit || 20), menuData.total)} of {menuData.total} items
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1 || isLoading}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-[#E5E7EB] bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span className="text-xs font-semibold text-gray-700">
-                    Page {page}
+                {/* Left: Small gradient icon badge */}
+                <div className={`flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg ${
+                  isSelected ? "bg-emerald-100" : "bg-slate-100 group-hover:bg-slate-200"
+                } transition-colors`}>
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-md ${meta.badgeClass} text-white`}>
+                    <MetaIcon size={16} />
                   </span>
+                </div>
+
+                {/* Middle: Category name with item count */}
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <h3 className={`font-black text-sm truncate ${isSelected ? "text-emerald-700" : "text-slate-900"}`}>
+                    {meta.label}
+                  </h3>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    activeCount > 0
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      : totalCount > 0
+                      ? "bg-amber-100 text-amber-800 border border-amber-200"
+                      : "bg-slate-100 text-slate-500 border border-slate-200"
+                  }`}>
+                    {activeCount > 0 ? `${activeCount} active` : totalCount > 0 ? `${totalCount} items` : "Empty"}
+                  </span>
+                </div>
+
+                {/* Right: Quick add button on hover */}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
-                    onClick={() => setPage(page + 1)}
-                    disabled={!menuData || page >= menuData.totalPages || isLoading}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-[#E5E7EB] bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Next page"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCategory(catName);
+                      setShowAddModal(true);
+                    }}
+                    className="flex-shrink-0 p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                    aria-label={`Add item to ${meta.label}`}
                   >
-                    <ChevronRight size={14} />
+                    <Plus size={12} />
                   </button>
                 </div>
               </motion.div>
-            )}
-          </>
-        )}
+            );
+          })}
+        </motion.div>
 
-        {activeTab === "categories" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
-            {metrics.map((cat) => (
-              <div
-                key={cat.name}
-                className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-white p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{categoryIcons[cat.name] || "📦"}</span>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{cat.name}</h3>
-                    <p className="text-xs text-gray-500">{cat.activeItems} active items</p>
-                  </div>
-                </div>
-                <Link
-                  href={`/vendor?tab=menu&category=${cat.name.toLowerCase()}`}
-                  className="text-xs font-semibold text-[#10B981] hover:text-[#059669]"
-                >
-                  View items
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "add" && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-gray-100 p-4 mb-3">
-              <Plus size={32} className="text-gray-400" />
+        {/* Item Directory */}
+        <motion.div variants={staggerItem} className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white/85 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-black text-slate-800">Item Directory</h2>
+              <p className="mt-0.5 text-xs text-slate-400">{menuData?.total ?? 0} total items</p>
             </div>
-            <h2 className="text-lg font-semibold text-gray-700 mb-2">Add New Menu Item</h2>
-            <p className="text-sm text-gray-500 max-w-sm">
-              Create a new menu item with name, category, price, description,
-              image, and add-on options.
-            </p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="mt-4 rounded-xl bg-[#10B981] px-4 py-2 text-sm font-semibold text-white hover:bg-[#059669] transition-colors"
-            >
-              Open Add Item Form
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedCategory}
+                onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }}
+                className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200"
+              >
+                <option value="all">All categories</option>
+                {Object.keys(categoryMeta).map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+              {selectedCategory !== "all" && (
+                <button onClick={() => setSelectedCategory("all")} className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200">Clear</button>
+              )}
+            </div>
           </div>
-        )}
+
+          <div className="relative min-h-[300px]">
+            {isError && (
+              <div className="flex items-center gap-2 p-4 text-sm text-rose-700"><AlertCircle size={16} />{(error as Error)?.message || "Failed to load menu items."}</div>
+            )}
+            {isLoading && !filteredItems.length && (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400"><LoaderCircle size={18} className="animate-spin" />Loading menu...</div>
+            )}
+            {!isLoading && !isError && filteredItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-slate-400">
+                <ShoppingBag size={32} />
+                <p className="text-sm">{selectedCategory === "all" ? "No menu items found." : `No items in ${selectedCategory} category.`}</p>
+                <button onClick={() => setShowAddModal(true)} className="mt-2 text-xs font-bold text-rose-600 hover:text-rose-700">{selectedCategory === "all" ? "Create your first item" : `Add ${selectedCategory} item`}</button>
+              </div>
+            )}
+            {!isError && filteredItems.length > 0 && (
+              <div className="overflow-x-auto">
+                {viewMode === "table" ? (
+                  <table className="w-full min-w-[720px] text-left text-xs">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                        <th className="px-4 py-3">Item details</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3 text-right">Price</th>
+                        <th className="px-4 py-3">Performance</th>
+                        <th className="px-4 py-3 text-center">Availability</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <AnimatePresence>
+                        {filteredItems.map((item) => (
+                          <motion.tr key={item._id} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18 }} className={`transition-colors hover:bg-rose-50/20 ${density === "compact" ? "" : ""}`}>
+                            <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
+                              <div className="flex items-center gap-3">
+                                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                                  {item.image ? <Image src={item.image} alt={item.name} fill className="object-cover" /> : <UtensilsCrossed size={16} className="m-auto text-slate-300" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-slate-900">{item.name}</p>
+                                  <p className="mt-0.5 text-[10px] text-slate-400">{item.addons?.length ? `${item.addons.length} add-on${item.addons.length > 1 ? "s" : ""}` : "No add-ons"}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600"><Tag size={11} />{item.category}</span>
+                            </td>
+                            <td className={`px-4 py-3 text-right text-sm font-black text-slate-900 ${density === "compact" ? "py-2" : ""}`}>৳{(item.price ?? 0).toLocaleString()}</td>
+                            <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
+                              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                <span className="font-bold text-slate-700">{item.ordersCount ?? 0} orders</span>
+                                <span>•</span>
+                                <span className="font-bold text-amber-600">★ {(item.rating ?? 0).toFixed(1)}</span>
+                              </div>
+                            </td>
+                            <td className={`px-4 py-3 text-center ${density === "compact" ? "py-2" : ""}`}>
+                              <label className="relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors">
+                                <input type="checkbox" checked={item.isActive} onChange={() => handleToggle(item)} className="sr-only" aria-label={`Toggle ${item.name}`} />
+                                <span className={`h-full w-full rounded-full transition-colors ${item.isActive ? "bg-emerald-500" : "bg-slate-300"}`} />
+                                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.isActive ? "translate-x-4" : ""}`} />
+                              </label>
+                            </td>
+                            <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
+                              <div className="flex items-center justify-center gap-1">
+                                <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }} transition={springTransition} onClick={() => handleToggle(item)} disabled={toggleMutation.isPending && toggleMutation.variables === item._id} className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${item.isActive ? "text-slate-500 hover:bg-slate-100" : "text-rose-600 hover:bg-rose-50"}`} aria-label={item.isActive ? `Pause ${item.name}` : `Activate ${item.name}`}>
+                                  {toggleMutation.isPending && toggleMutation.variables === item._id ? <LoaderCircle size={14} className="animate-spin" /> : item.isActive ? <PauseCircle size={14} /> : <CheckCircle size={14} />}
+                                </motion.button>
+                                <Link href="/vendor?tab=orders" className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100" aria-label={`View orders for ${item.name}`}><ShoppingBag size={14} /></Link>
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-3">
+                    <AnimatePresence>
+                      {filteredItems.map((item) => (
+                        <motion.div
+                          key={item._id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.18 }}
+                          className="group rounded-2xl border border-slate-200/70 bg-white/85 p-3 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-rose-200 hover:bg-rose-50/40 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)]"
+                        >
+                          <div className="aspect-square relative overflow-hidden rounded-xl bg-slate-100 mb-3">
+                            {item.image ? (
+                              <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                            ) : (
+                              <UtensilsCrossed size={24} className="absolute inset-0 m-auto text-slate-300" />
+                            )}
+                          </div>
+                          <div className="space-y-2 min-h-[80px]">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-bold text-slate-900 truncate text-sm">{item.name}</h3>
+                              <label className="relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors flex-shrink-0">
+                                <input type="checkbox" checked={item.isActive} onChange={() => handleToggle(item)} className="sr-only" aria-label={`Toggle ${item.name}`} />
+                                <span className={`h-full w-full rounded-full transition-colors ${item.isActive ? "bg-emerald-500" : "bg-slate-300"}`} />
+                                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${item.isActive ? "translate-x-4" : ""}`} />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600"><Tag size={10} />{item.category}</span>
+                              <span className="font-bold text-amber-600">★ {(item.rating ?? 0).toFixed(1)}</span>
+                              <span>•</span>
+                              <span className="font-bold text-slate-700">{item.ordersCount ?? 0} orders</span>
+                            </div>
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                              <span className="text-sm font-black text-slate-900">৳{(item.price ?? 0).toLocaleString()}</span>
+                              <div className="flex items-center gap-1">
+                                <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }} transition={springTransition} onClick={() => handleToggle(item)} disabled={toggleMutation.isPending && toggleMutation.variables === item._id} className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${item.isActive ? "text-slate-500 hover:bg-slate-100" : "text-rose-600 hover:bg-rose-50"}`} aria-label={item.isActive ? `Pause ${item.name}` : `Activate ${item.name}`}>
+                                  {toggleMutation.isPending && toggleMutation.variables === item._id ? <LoaderCircle size={12} className="animate-spin" /> : item.isActive ? <PauseCircle size={12} /> : <CheckCircle size={12} />}
+                                </motion.button>
+                                <Link href="/vendor?tab=orders" className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100" aria-label={`View orders for ${item.name}`}><ShoppingBag size={12} /></Link>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+            )}
+            {isLoading && filteredItems.length > 0 && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+                <LoaderCircle size={24} className="animate-spin text-rose-500" />
+              </div>
+            )}
+          </div>
+
+          <div className="sticky bottom-0 border-t border-slate-100 bg-white/95 backdrop-blur-sm p-4 sm:flex sm:items-center sm:justify-between">
+            {menuData && menuData.total > 0 && (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
+                <p className="text-xs text-slate-500">Showing {(page - 1) * (menuData.limit || 20) + 1}–{Math.min(page * (menuData.limit || 20), menuData.total)} of {menuData.total}</p>
+                <div className="flex items-center gap-2">
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={springTransition} onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1 || isLoading} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40" aria-label="Previous page"><ChevronLeft size={14} /></motion.button>
+                  <span className="text-xs font-bold text-slate-700">Page {page}</span>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={springTransition} onClick={() => setPage(page + 1)} disabled={!menuData || page >= menuData.totalPages || isLoading} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40" aria-label="Next page"><ChevronRight size={14} /></motion.button>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
       </motion.div>
 
       <AddMenuItemModal open={showAddModal} onClose={() => setShowAddModal(false)} />

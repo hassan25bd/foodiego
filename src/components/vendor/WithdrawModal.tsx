@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, createElement } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Wallet, Banknote, Smartphone } from "lucide-react";
 
 interface WithdrawModalProps {
