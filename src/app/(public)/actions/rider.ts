@@ -86,10 +86,11 @@ export async function registerRider(
       vehicleNumber: data.vehicleNumber,
       licenseNumber: data.licenseNumber,
       photoUrl: data.photoUrl,
-      // TEMP: Admin approval disabled — new riders are auto-approved.
-      // Restore `status: "pending"` to re-enable the admin-approval flow.
-      // status: "pending",
-      status: "approved",
+      // UPDATE (admin-approval fix): re-enabled. New riders now start
+      // "pending" and only reach the rider dashboard once an admin approves
+      // them from /admin/riders (see src/app/(main)/rider/page.tsx for the
+      // matching pending/rejected gate on the rider side).
+      status: "pending",
     });
   }
 

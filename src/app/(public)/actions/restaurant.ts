@@ -95,10 +95,11 @@ export async function registerRestaurant(
       cuisineType: data.cuisineType,
       openingTime: data.openingTime,
       closingTime: data.closingTime,
-      // TEMP: Admin approval disabled — new restaurants are auto-approved.
-      // Restore `status: "pending"` to re-enable the admin-approval flow.
-      // status: "pending",
-      status: "approved",
+      // UPDATE (admin-approval fix): re-enabled. New restaurants now start
+      // "pending" and only reach the vendor dashboard once an admin approves
+      // them from /admin/vendors (see src/app/(main)/vendor/layout.tsx for
+      // the matching pending/rejected gate on the vendor side).
+      status: "pending",
     });
   }
 
