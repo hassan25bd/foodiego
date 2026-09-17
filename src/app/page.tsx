@@ -2,10 +2,12 @@ import { Navbar } from "@/components/Share/Navbar";
 import Hero from "@/components/Hero";
 import WhatAreYouCraving from "@/components/WhatAreYouCraving";
 import PickedForYouSection from "@/components/PickedForYouSection";
+import SpecialOffers from "@/components/SpecialOffers";
 import FAQSection from "@/components/FAQ";
 import HowItWorksSection from "@/components/HowItWorks";
 import Footer from "@/components/Share/Footer";
 import { getOptionalSession } from "@/lib/dal";
+
 
 export default async function Home() {
   const session = await getOptionalSession();
@@ -16,6 +18,7 @@ export default async function Home() {
       <Hero />
       <WhatAreYouCraving />
       <PickedForYouSection />
+      <SpecialOffers/>
       <FAQSection />
       <HowItWorksSection />
       <Footer />
