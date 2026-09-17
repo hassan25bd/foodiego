@@ -10,7 +10,7 @@ import {
   type ComponentType,
   type FormEvent,
 } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion, type Variants } from "motion/react";
 import {
   User,
   Mail,

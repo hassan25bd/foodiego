@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useActionState, type ComponentType } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion, type Variants } from "motion/react";
 import {
   User,
   Mail,
