@@ -11,7 +11,7 @@ export default async function Home() {
   const session = await getOptionalSession();
 
   return (
-    <main className="flex-1 bg-gradient-to-br from-green-50 via-purple-50 to-emerald-100" suppressHydrationWarning>
+    <main className="flex-1 bg-gradient-to-br from-green-100 via-purple-50 to-emerald-100" suppressHydrationWarning>
       <Navbar user={session ? { name: session.name, role: session.role } : null} />
       <Hero />
       <WhatAreYouCraving />
