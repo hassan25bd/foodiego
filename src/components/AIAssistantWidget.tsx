@@ -17,6 +17,7 @@ import {
   Clock,
   MapPin,
 } from "lucide-react";
+import { motion } from "motion/react";
 
 interface Message {
   id: number;
@@ -152,6 +153,27 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragConstraints, setDragConstraints] = useState({
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  });
+
+  useEffect(() => {
+    const updateConstraints = () => {
+      setDragConstraints({
+        left: -window.innerWidth + 180,
+        right: 0,
+        top: -window.innerHeight + 80,
+        bottom: 0,
+      });
+    };
+    updateConstraints();
+    window.addEventListener("resize", updateConstraints);
+    return () => window.removeEventListener("resize", updateConstraints);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -322,9 +344,19 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
   return (
     <div className="fixed bottom-6 right-6 z-50 font-sans">
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className={`group flex items-center gap-2 bg-gradient-to-r from-[#15462D] to-[#1a5c3a] text-white pl-5 pr-6 py-3.5 rounded-full shadow-[0_10px_25px_rgba(21,70,45,0.3)] hover:shadow-[0_20px_35px_rgba(21,70,45,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer relative ${
+        <motion.button
+          drag
+          dragConstraints={dragConstraints}
+          dragElastic={0.1}
+          dragMomentum={true}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={() => setIsDragging(false)}
+          onClick={() => {
+            if (isDragging) return;
+            setIsOpen(true);
+          }}
+          whileDrag={{ scale: 1.1, cursor: "grabbing" }}
+          className={`group flex items-center gap-2 bg-gradient-to-r from-[#15462D] to-[#1a5c3a] text-white pl-5 pr-6 py-3.5 rounded-full shadow-[0_10px_25px_rgba(21,70,45,0.3)] hover:shadow-[0_20px_35px_rgba(21,70,45,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-grab active:cursor-grabbing touch-none select-none relative ${
             hasUnread ? "animate-pulse" : ""
           }`}
         >
@@ -336,7 +368,7 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
           )}
           <Sparkles className="w-5 h-5 text-[#F6A429] transition-transform duration-200 group-hover:rotate-12" />
           <span className="font-semibold text-sm">Ask FoodieGo AI</span>
-        </button>
+        </motion.button>
       )}
 
       {isOpen && (
@@ -460,7 +492,7 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
                               {action.icon}
                               {action.label}
                               <ChevronRight size={11} />
-                            </button>
+                              </button>
                           ))}
                         </div>
                       )}
