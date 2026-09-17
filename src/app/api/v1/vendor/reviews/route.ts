@@ -8,7 +8,7 @@ import { Review } from "@/models/Review";
 
 export interface Review {
   id: string;
-  orderId: string;
+  orderId?: string;
   orderName: string;
   customerName: string;
   customerAvatar?: string;
