@@ -2,20 +2,17 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { useActiveDeliveries, type Delivery } from "@/hooks/useDeliveryManagement";
+import { MessageCircle } from "lucide-react";
+import { useActiveDeliveries, type Delivery, type Rider } from "@/hooks/useDeliveryManagement";
 import { springTransition, staggerContainer, staggerItem } from "@/app/(main)/vendor/components/motion";
+import OrderChatPanel from "@/components/chat/OrderChatPanel";
 
 type DeliveryTab = "active" | "riders" | "history";
 
-type NearbyRiderStatus = "Available" | "Assigned" | "Offline";
-
-type NearbyRider = {
-  name: string;
-  initials: string;
-  detail: string;
-  status: NearbyRiderStatus;
-};
-
+// UPDATE (rider-GPS fix): "Nearby Riders" used to be a fixed 3-entry fake
+// array ("Tom Smith", "Mike K.", "Rachel J.") completely disconnected from
+// `data.riders`, which useActiveDeliveries already fetches for real. It
+// now renders that real rider list instead of the fake one.
 const statusConfig: Record<string, { label: string; className: string }> = {
   "Picked Up": {
     label: "Picked Up",
@@ -35,28 +32,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
 };
 
-const nearbyRiders: NearbyRider[] = [
-  {
-    name: "Tom Smith",
-    initials: "TS",
-    detail: "0.2 mi away • Bike",
-    status: "Available",
-  },
-  {
-    name: "Mike K.",
-    initials: "MK",
-    detail: "On Delivery #842",
-    status: "Assigned",
-  },
-  {
-    name: "Rachel J.",
-    initials: "RJ",
-    detail: "Last active 2h ago",
-    status: "Offline",
-  },
-];
-
-const riderStatusClasses: Record<NearbyRiderStatus, string> = {
+const riderStatusClasses: Record<Rider["status"], string> = {
   Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
   Assigned: "bg-yellow-50 text-yellow-700 border-yellow-200",
   Offline: "bg-slate-100 text-slate-500 border-slate-200",
@@ -84,6 +60,11 @@ function StatusPill({ delivery }: { delivery: Delivery }) {
 
 function DispatchRow({ delivery }: { delivery: Delivery }) {
   const isDelayed = delivery.status === "Delayed";
+  // UPDATE (restaurant-rider chat fix): the vendor previously had no way
+  // to message the rider handling an order — this expands the same
+  // OrderChatPanel used elsewhere, on the "restaurant_rider" channel the
+  // backend already supported but nothing on the frontend used.
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <motion.div
@@ -93,7 +74,7 @@ function DispatchRow({ delivery }: { delivery: Delivery }) {
       transition={springTransition}
       className={`rounded-2xl border bg-white p-4 ${isDelayed ? "border-red-200 bg-red-50/80" : "border-slate-200/80"}`}
     >
-      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] grid-rows-[auto_auto_auto] gap-x-4 gap-y-4 lg:grid-cols-[3.5rem_minmax(0,1fr)_9.5rem_10.5rem_5rem] lg:grid-rows-1 lg:gap-4 lg:items-center">
+      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] grid-rows-[auto_auto_auto] gap-x-4 gap-y-4 lg:grid-cols-[3.5rem_minmax(0,1fr)_9.5rem_10.5rem_5rem_5rem] lg:grid-rows-1 lg:gap-4 lg:items-center">
         <div className="flex h-14 items-center justify-center rounded-xl border text-sm font-bold">
           {isDelayed ? (
             <span className="bg-red-50 text-red-700 border-red-200">#{delivery.id}</span>
@@ -126,22 +107,49 @@ function DispatchRow({ delivery }: { delivery: Delivery }) {
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 lg:mb-1">ETA</p>
           <p className={`text-base font-bold ${isDelayed ? "text-red-600" : "text-slate-900"}`}>{delivery.eta}</p>
         </div>
+
+        <div className="flex items-center lg:justify-end">
+          {delivery.riderId && (
+            <button
+              type="button"
+              onClick={() => setChatOpen((v) => !v)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              aria-label="Chat with rider"
+            >
+              <MessageCircle className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
+
+      {chatOpen && delivery.riderId && (
+        <div className="mt-4">
+          <OrderChatPanel orderId={delivery.orderId} peerLabel="the rider" channel="restaurant_rider" />
+        </div>
+      )}
     </motion.div>
   );
 }
 
-function NearbyRidersList() {
+function NearbyRidersList({ riders }: { riders: Rider[] }) {
+  if (riders.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-center text-sm text-slate-500">
+        No approved riders yet.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {nearbyRiders.map((rider) => (
-        <div key={rider.name} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3">
+      {riders.map((rider) => (
+        <div key={rider.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
-            {rider.initials}
+            {getInitials(rider.name)}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-slate-900">{rider.name}</p>
-            <p className="mt-0.5 truncate text-xs text-slate-500">{rider.detail}</p>
+            <p className="mt-0.5 truncate text-xs text-slate-500">{rider.vehicle}</p>
           </div>
           <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riderStatusClasses[rider.status]}`}>
             {rider.status}
@@ -160,10 +168,13 @@ export default function DeliveryManagement() {
   const activeDeliveries = allDeliveries.filter((delivery) =>
     ["Picked Up", "Assigning", "Delayed", "In Transit"].includes(delivery.status),
   );
-  const featuredDeliveries = [842, 843, 839]
-    .map((id) => activeDeliveries.find((delivery) => delivery.id === id))
-    .filter((delivery): delivery is Delivery => Boolean(delivery));
+  // UPDATE (rider-GPS fix): used to pick 3 hardcoded fake ids (842, 843,
+  // 839) out of the list, which matched nothing once the ids became real
+  // Mongo ObjectId strings. It now just shows the most recent active
+  // dispatches.
+  const featuredDeliveries = activeDeliveries.slice(0, 5);
   const deliveredDeliveries = allDeliveries.filter((delivery) => delivery.status === "Delivered");
+  const riders = data?.riders || [];
 
   const tabs: Array<{ id: DeliveryTab; label: string }> = [
     { id: "active", label: "Active Deliveries" },
@@ -231,7 +242,7 @@ export default function DeliveryManagement() {
             <div className="rounded-3xl border border-slate-200/80 bg-slate-50/50 p-5">
               <h3 className="text-base font-bold text-slate-900">Nearby Riders</h3>
               <div className="mt-4">
-                <NearbyRidersList />
+                <NearbyRidersList riders={riders} />
               </div>
             </div>
           </aside>
@@ -239,7 +250,7 @@ export default function DeliveryManagement() {
       ) : activeTab === "riders" ? (
         <motion.div variants={staggerItem} initial="initial" animate="animate" className="rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6">
           <h2 className="mb-5 text-lg font-bold text-slate-900">Rider Status</h2>
-          <NearbyRidersList />
+          <NearbyRidersList riders={riders} />
         </motion.div>
       ) : (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4">

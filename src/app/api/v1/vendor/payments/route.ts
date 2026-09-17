@@ -3,6 +3,31 @@ import type { NextRequest } from "next/server";
 import { verifySessionCookie } from "@/lib/session";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
+import { Restaurant } from "@/models/Restaurant";
+import { OrderBooking } from "@/models/OrderBooking";
+
+// ============================================================
+// UPDATE (vendor-payments real-data fix): this route used to return a
+// fully fabricated `demoTransactions`/`demoEarningsTrend` array and a
+// process-global `mockBalance` variable (shared across every vendor,
+// reset on every server restart). It now derives everything from this
+// vendor's real OrderBooking history:
+//   - "gross" per order = totalAmount - deliveryFee (the delivery fee is
+//     the rider's earning, not the vendor's — see OrderBooking.ts).
+//   - commission uses a flat PLATFORM_COMMISSION_RATE, since there is no
+//     per-vendor commission-rate field anywhere in the schema yet. A real
+//     Foodpanda-style system would let admins set this per vendor/tier.
+//   - "Paid" transactions = delivered orders (revenue has been earned).
+//     "Pending" = orders still in the delivery pipeline (confirmed/
+//     preparing/out_for_delivery) — money not yet finalized.
+//   - availableBalance = lifetime net earnings minus `walletWithdrawn`
+//     (see Restaurant.ts), a real persisted ledger. There's still no real
+//     bKash/Nagad/bank payout integration (needs merchant credentials),
+//     so withdrawing only reduces this internal ledger — see
+//     src/app/api/v1/vendor/payments/withdraw/route.ts.
+// ============================================================
+
+const PLATFORM_COMMISSION_RATE = 0.15;
 
 export type PaymentStatus = "Paid" | "Pending" | "Failed";
 
@@ -28,95 +53,9 @@ export interface PaymentsOverview {
   aiInsights: string[];
 }
 
-let mockBalance = 45200;
-
-export const demoTransactions: PaymentTransaction[] = [
-  {
-    id: "TXN-98234-A",
-    orderId: "#ORD-5521",
-    customerName: "Sarah M.",
-    date: "Oct 24, 2023",
-    grossAmount: 1200,
-    commission: 180,
-    netEarnings: 1020,
-    status: "Paid",
-  },
-  {
-    id: "TXN-98235-B",
-    orderId: "#ORD-5522",
-    customerName: "David C.",
-    date: "Oct 24, 2023",
-    grossAmount: 850,
-    commission: 127.5,
-    netEarnings: 722.5,
-    status: "Pending",
-  },
-  {
-    id: "TXN-98236-C",
-    orderId: "#ORD-5523",
-    customerName: "Elena R.",
-    date: "Oct 23, 2023",
-    grossAmount: 1050,
-    commission: 157.5,
-    netEarnings: 892.5,
-    status: "Paid",
-  },
-  {
-    id: "TXN-98237-D",
-    orderId: "#ORD-5524",
-    customerName: "Mike K.",
-    date: "Oct 23, 2023",
-    grossAmount: 620,
-    commission: 93,
-    netEarnings: 527,
-    status: "Paid",
-  },
-  {
-    id: "TXN-98238-E",
-    orderId: "#ORD-5525",
-    customerName: "Tanvir M.",
-    date: "Oct 23, 2023",
-    grossAmount: 780,
-    commission: 117,
-    netEarnings: 663,
-    status: "Failed",
-  },
-];
-
-export const demoEarningsTrend = [
-  { month: "Jan", gross: 35000, net: 29750 },
-  { month: "Feb", gross: 42000, net: 35700 },
-  { month: "Mar", gross: 38000, net: 32300 },
-  { month: "Apr", gross: 45000, net: 38250 },
-  { month: "May", gross: 48000, net: 40800 },
-  { month: "Jun", gross: 52000, net: 44200 },
-];
-
-const AI_INSIGHTS = [
-  "Weekend Surge Predicted (+22% orders expected) — consider staffing up your kitchen and enabling auto-assignment for delivery riders.",
-  "Top Earning Item: Spicy Beef Burger — 18% of total revenue this month. Consider featuring it in promotions.",
-  "Payment method analysis: 68% cash, 32% bKash. Recommend encouraging digital payments to reduce payout delays.",
-  "Commission optimization opportunity: Your current 15% rate is below platform average. Consider loyalty promotions to increase volume.",
-  "Average order value increased by 14% this week compared to last week. Menu pricing strategy is effective.",
-];
-
 export async function GET(req: NextRequest) {
   const sessionCookie = req.cookies.get("session")?.value;
   const decoded = await verifySessionCookie(sessionCookie);
-
-  if (process.env.NODE_ENV === "development" && !decoded) {
-    return NextResponse.json({
-      totalEarnings: 245000,
-      availableBalance: mockBalance,
-      pendingBalance: 12000,
-      platformCommission: 15,
-      monthlyGrowth: 12.5,
-      transactions: demoTransactions,
-      earningsTrend: demoEarningsTrend,
-      aiInsights: AI_INSIGHTS,
-    } as PaymentsOverview);
-  }
-
   if (!decoded) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -127,89 +66,100 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({
-    totalEarnings: 245000,
-    availableBalance: mockBalance,
-    pendingBalance: 12000,
-    platformCommission: 15,
-    monthlyGrowth: 12.5,
-    transactions: demoTransactions,
-    earningsTrend: demoEarningsTrend,
-    aiInsights: AI_INSIGHTS,
-  } as PaymentsOverview);
-}
+  const restaurant = await Restaurant.findOne({ userId: user._id }).lean();
+  if (!restaurant) {
+    return NextResponse.json({ error: "Restaurant profile not found" }, { status: 404 });
+  }
 
-export async function PATCH(req: NextRequest) {
-  const sessionCookie = req.cookies.get("session")?.value;
-  const decoded = await verifySessionCookie(sessionCookie);
+  const orders = await OrderBooking.find({ restaurantId: restaurant._id })
+    .populate("customerId", "name")
+    .sort({ createdAt: -1 })
+    .lean();
 
-  if (process.env.NODE_ENV === "development" && !decoded) {
-    const body = await req.json();
-    const { delta } = body;
+  function grossOf(o: (typeof orders)[number]) {
+    return Math.max(0, (o.totalAmount || 0) - (o.deliveryFee || 0));
+  }
 
-    mockBalance = Math.round(mockBalance + (delta || 0));
-    if (mockBalance < 0) mockBalance = 0;
+  const delivered = orders.filter((o) => o.status === "delivered");
+  const inFlight = orders.filter((o) =>
+    ["confirmed", "preparing", "out_for_delivery"].includes(o.status)
+  );
 
-    const txNum = demoTransactions.length + 1;
-    const newTx = {
-      id: `TXN-98${234 + txNum}-LIVE`,
-      orderId: `#ORD-${5520 + txNum}`,
-      customerName: "Live Customer",
-      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      grossAmount: getRandomInt(500, 1500),
-      commission: 0,
-      netEarnings: 0,
-      status: "Paid" as PaymentStatus,
-    };
-    newTx.commission = Math.round(newTx.grossAmount * 0.15);
-    newTx.netEarnings = newTx.grossAmount - newTx.commission;
-    demoTransactions.unshift(newTx);
+  const transactions: PaymentTransaction[] = [...delivered, ...inFlight]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 50)
+    .map((o) => {
+      const gross = grossOf(o);
+      const commission = Math.round(gross * PLATFORM_COMMISSION_RATE * 100) / 100;
+      const customer = o.customerId as unknown as { name?: string } | null;
+      return {
+        id: `TXN-${String(o._id).slice(-8).toUpperCase()}`,
+        orderId: `#${String(o._id).slice(-6).toUpperCase()}`,
+        customerName: customer?.name || "Customer",
+        date: new Date(o.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        grossAmount: gross,
+        commission,
+        netEarnings: gross - commission,
+        status: o.status === "delivered" ? "Paid" : ("Pending" as PaymentStatus),
+      };
+    });
 
-    return NextResponse.json({
-      success: true,
-      availableBalance: mockBalance,
-      newTransaction: newTx,
+  const totalEarnings = delivered.reduce((sum, o) => {
+    const gross = grossOf(o);
+    return sum + (gross - gross * PLATFORM_COMMISSION_RATE);
+  }, 0);
+  const pendingBalance = inFlight.reduce((sum, o) => {
+    const gross = grossOf(o);
+    return sum + (gross - gross * PLATFORM_COMMISSION_RATE);
+  }, 0);
+  const availableBalance = Math.max(0, totalEarnings - (restaurant.walletWithdrawn || 0));
+
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thisMonthNet = delivered
+    .filter((o) => new Date(o.updatedAt) >= thisMonthStart)
+    .reduce((s, o) => s + (grossOf(o) * (1 - PLATFORM_COMMISSION_RATE)), 0);
+  const lastMonthNet = delivered
+    .filter((o) => new Date(o.updatedAt) >= lastMonthStart && new Date(o.updatedAt) < thisMonthStart)
+    .reduce((s, o) => s + (grossOf(o) * (1 - PLATFORM_COMMISSION_RATE)), 0);
+  const monthlyGrowth = lastMonthNet > 0 ? Math.round(((thisMonthNet - lastMonthNet) / lastMonthNet) * 1000) / 10 : 0;
+
+  const earningsTrend: { month: string; gross: number; net: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const monthOrders = delivered.filter((o) => {
+      const t = new Date(o.updatedAt).getTime();
+      return t >= monthStart.getTime() && t < monthEnd.getTime();
+    });
+    const gross = monthOrders.reduce((s, o) => s + grossOf(o), 0);
+    earningsTrend.push({
+      month: monthStart.toLocaleDateString("en-US", { month: "short" }),
+      gross: Math.round(gross),
+      net: Math.round(gross * (1 - PLATFORM_COMMISSION_RATE)),
     });
   }
 
-  if (!decoded) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  await dbConnect();
-  const user = await User.findOne({ uid: decoded.uid }).lean();
-  if (!user || user.role !== "restaurant") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const { delta } = body;
-
-  mockBalance = Math.round(mockBalance + (delta || 0));
-  if (mockBalance < 0) mockBalance = 0;
-
-  const txNum = demoTransactions.length + 1;
-  const newTx = {
-    id: `TXN-98${234 + txNum}-LIVE`,
-    orderId: `#ORD-${5520 + txNum}`,
-    customerName: "Live Customer",
-    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    grossAmount: getRandomInt(500, 1500),
-    commission: 0,
-    netEarnings: 0,
-    status: "Paid" as PaymentStatus,
-  };
-  newTx.commission = Math.round(newTx.grossAmount * 0.15);
-  newTx.netEarnings = newTx.grossAmount - newTx.commission;
-  demoTransactions.unshift(newTx);
+  const cashCount = orders.filter((o) => o.paymentMethod === "cash").length;
+  const onlineCount = orders.length - cashCount;
+  const cashPct = orders.length > 0 ? Math.round((cashCount / orders.length) * 100) : 0;
+  const aiInsights = [
+    `Payment method split: ${cashPct}% cash on delivery, ${100 - cashPct}% online (${onlineCount} orders). Encouraging more online payments can reduce delivery-time cash handling.`,
+    `Platform commission is currently ${(PLATFORM_COMMISSION_RATE * 100).toFixed(0)}% per order, applied to the item subtotal (delivery fees go to the rider, not the platform).`,
+    delivered.length > 0
+      ? `You've completed ${delivered.length} delivered order${delivered.length === 1 ? "" : "s"} so far, earning ${totalEarnings.toFixed(2)} in net revenue after commission.`
+      : "No delivered orders yet — earnings will appear here once your first order is completed.",
+  ];
 
   return NextResponse.json({
-    success: true,
-    availableBalance: mockBalance,
-    newTransaction: newTx,
-  });
-}
-
-function getRandomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+    totalEarnings,
+    availableBalance,
+    pendingBalance,
+    platformCommission: PLATFORM_COMMISSION_RATE * 100,
+    monthlyGrowth,
+    transactions,
+    earningsTrend,
+    aiInsights,
+  } as PaymentsOverview);
 }

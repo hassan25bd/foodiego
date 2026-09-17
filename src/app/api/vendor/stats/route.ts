@@ -5,8 +5,16 @@ import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { Restaurant } from "@/models/Restaurant";
 import { MenuItem } from "@/models/MenuItem";
-import { Order } from "@/models/Order";
+import { OrderBooking } from "@/models/OrderBooking";
 import { Review } from "@/models/Review";
+import { toVendorOrderStatus } from "@/lib/orderStatusMap";
+
+// UPDATE: switched from the unused `Order` model (collection "orders",
+// always empty because nothing writes to it) to `OrderBooking` (collection
+// "orderBooking"), which is what a real customer checkout actually creates.
+// See src/lib/orderStatusMap.ts for the status-vocabulary translation this
+// route relies on to keep its JSON response shape unchanged for the
+// dashboard UI (src/app/(main)/vendor/components/DashboardOverview.tsx).
 
 export async function GET(req: NextRequest) {
   const sessionCookie = req.cookies.get("session")?.value;
@@ -56,24 +64,28 @@ export async function GET(req: NextRequest) {
     menuItems,
     reviews,
   ] = await Promise.all([
-    Order.find({
-      merchantId: restaurant._id,
+    OrderBooking.find({
+      restaurantId: restaurant._id,
       createdAt: { $gte: todayStart },
     }).lean(),
-    Order.find({
-      merchantId: restaurant._id,
+    OrderBooking.find({
+      restaurantId: restaurant._id,
       createdAt: { $gte: weekStart },
     }).lean(),
-    Order.find({ merchantId: restaurant._id }).sort({ createdAt: -1 }).limit(10).lean(),
+    OrderBooking.find({ restaurantId: restaurant._id })
+      .populate("customerId", "name")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
     MenuItem.find({ vendorId: restaurant._id }).lean(),
     Review.find({ merchantId: restaurant._id }).lean(),
   ]);
 
-  const todaySales = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const todaySales = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const ordersCount = todayOrders.length;
-  const pendingCount = todayOrders.filter((o) => o.status === "new").length;
+  const pendingCount = todayOrders.filter((o) => toVendorOrderStatus(o.status) === "new").length;
   const activeCount = todayOrders.filter((o) =>
-    ["preparing", "ready", "picked_up"].includes(o.status)
+    ["preparing", "ready", "picked_up"].includes(toVendorOrderStatus(o.status))
   ).length;
 
   const rating = reviews.length > 0
@@ -96,12 +108,12 @@ export async function GET(req: NextRequest) {
       const created = new Date(o.createdAt);
       return created >= day && created < dayEnd;
     });
-    const revenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const revenue = dayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     salesTrend.push({ day: dayNames[day.getDay()], revenue });
   }
 
-  const totalWeekly = weekOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const totalWeekly = weekOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   const bestSellers = menuItems
     .sort((a, b) => (b.ordersCount || 0) - (a.ordersCount || 0))
@@ -113,14 +125,17 @@ export async function GET(req: NextRequest) {
       image: item.image || "",
     }));
 
-  const recentOrders = recentOrdersData.map((o) => ({
-    id: o.orderId,
-    customer: o.customer?.name || "Unknown",
-    items: o.items?.map((i) => `${i.quantity}x ${i.name}`).join(", ") || "",
-    amount: o.total || 0,
-    time: new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    status: o.status,
-  }));
+  const recentOrders = recentOrdersData.map((o) => {
+    const customer = o.customerId as unknown as { name?: string } | null;
+    return {
+      id: String(o._id),
+      customer: customer?.name || "Guest",
+      items: o.items?.map((i) => `${i.quantity}x ${i.name}`).join(", ") || "",
+      amount: o.totalAmount || 0,
+      time: new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      status: toVendorOrderStatus(o.status),
+    };
+  });
 
   return NextResponse.json({
     todaySales,

@@ -1,24 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, Star, Clock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { FoodCard, FoodItem } from "@/components/FoodCard";
+import { FoodCard } from "@/components/FoodCard";
 
+// UPDATE (real food-catalog fix): favorite dishes used to be looked up
+// against static demo JSON (public/api/foods.json), so a dish favorited
+// from the real menu (a real MenuItem id) never actually matched anything
+// here. Now uses AppContext's `catalogFoodItems`, the same real menu data
+// (from MongoDB) already flattened once for every page that needs it.
 export default function ClientFavoritesPage() {
-  const { favorites, restaurants, addToCart, toggleFavorite } = useApp();
-  const [foods, setFoods] = useState<FoodItem[]>([]);
+  const { favorites, restaurants, addToCart, toggleFavorite, catalogFoodItems } = useApp();
 
-  useEffect(() => {
-    fetch("/api/foods.json")
-      .then((res) => res.json())
-      .then((data: FoodItem[]) => setFoods(data))
-      .catch(() => setFoods([]));
-  }, []);
-
-  const favoriteFoods = foods.filter((food) => favorites.includes(food.id));
+  const favoriteFoods = catalogFoodItems.filter((food) => favorites.includes(food.id));
   const favoriteRestaurants = restaurants.filter((r) => favorites.includes(r.id));
 
   return (

@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -20,6 +21,13 @@ import {
   User,
   Star,
 } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+
+// UPDATE (rider-dashboard real-data fix): the sidebar used to hardcode
+// "Afrin" and a fixed "4.9 Rating" on every rider sub-page (orders,
+// deliveries, earnings, shift-history). It now shows the logged-in
+// rider's real name (from AppContext) and real rating, fetched from the
+// same /api/v1/rider/summary route the dashboard uses.
 
 interface RiderShellContextValue {
   mobileMenu: boolean;
@@ -53,6 +61,21 @@ export default function RiderShell({
   activePath,
 }: RiderShellProps) {
   const [mobileMenu, setMobileMenu] = useState(false);
+  const { user } = useApp();
+  const [rating, setRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/v1/rider/summary");
+      if (!res.ok || cancelled) return;
+      const data = (await res.json()) as { performance: { rating: number } };
+      if (!cancelled) setRating(data.performance.rating);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <RiderShellContext.Provider value={{ mobileMenu, setMobileMenu }}>
@@ -81,13 +104,13 @@ export default function RiderShell({
                     <User className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800">Afrin</p>
+                    <p className="font-semibold text-slate-800">{user?.name || "Rider"}</p>
                     <p className="text-xs font-medium text-green-500">
                       Rider
                     </p>
                     <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
                       <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>4.9 Rating</span>
+                      <span>{rating !== null ? rating.toFixed(1) : "—"} Rating</span>
                     </div>
                   </div>
                 </div>

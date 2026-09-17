@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// UPDATE (rider-GPS fix): `id` used to be typed `number` to match 7
+// hardcoded fake delivery ids (842, 843, ...). Real OrderBooking documents
+// have Mongo ObjectId strings, so `id`/`orderId` are both real order id
+// strings now. `lat`/`lng` (the delivery destination) are optional since
+// there's no address-to-coordinate geocoding in this codebase — see the
+// comment in DeliveryMap.tsx.
 export interface Delivery {
-  id: number;
+  id: string;
   orderId: string;
   customerName: string;
   customerPhone: string;
@@ -16,8 +22,8 @@ export interface Delivery {
   completedAt?: string;
   cancelledAt?: string;
   delayReason?: string;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   riderLat?: number;
   riderLng?: number;
   riderSpeed?: number;
@@ -29,8 +35,8 @@ export interface Rider {
   status: "Available" | "Assigned" | "Offline";
   distance: string;
   vehicle: string;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
 }
 
 export interface RiderLocation {
@@ -82,33 +88,28 @@ export const useAssignRider = () => {
       if (!res.ok) throw new Error("Failed to assign rider");
       return res.json();
     },
+    // UPDATE (rider-GPS fix): the old optimistic update looked up the
+    // rider's display name from a hardcoded rider_001..rider_007 map. Real
+    // riders don't have predictable ids, so the optimistic update now
+    // reads the name from the riders list already in the query cache
+    // instead of guessing — falling back to a full refetch (onSettled)
+    // either way to reconcile with the server response.
     onMutate: async ({ orderId, riderId }) => {
       await queryClient.cancelQueries({ queryKey: ["active-deliveries"] });
 
       const previous = queryClient.getQueryData<ActiveDeliveriesResponse>(["active-deliveries"]);
 
       if (previous) {
-        const riderNames: Record<string, string> = {
-          rider_001: "Tom Smith",
-          rider_002: "Mike K.",
-          rider_003: "Rachel J.",
-          rider_004: "Elena V.",
-          rider_005: "David M.",
-          rider_006: "James P.",
-          rider_007: "Anna L.",
-        };
-
+        const rider = previous.riders.find((r) => r.id === riderId);
         queryClient.setQueryData(["active-deliveries"], {
           ...previous,
           deliveries: previous.deliveries.map((d) =>
             d.orderId === orderId
               ? {
                   ...d,
-                  assignedRider: riderNames[riderId] || "Unassigned",
-                  riderId: riderId,
+                  assignedRider: rider?.name || "Assigned rider",
+                  riderId,
                   status: "In Transit" as const,
-                  eta: "8 min",
-                  riderSpeed: 22,
                 }
               : d
           ),
@@ -121,6 +122,9 @@ export const useAssignRider = () => {
       if (context?.previous) {
         queryClient.setQueryData(["active-deliveries"], context.previous);
       }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["active-deliveries"] });
     },
   });
 };

@@ -1,7 +1,7 @@
 import mongoose, { Schema, models, model } from "mongoose";
 
 // Const array and TypeScript type define korche restaurant er approval statuses ("pending", "approved", "rejected") er jonno, jate type safety thake.
-export const RESTAURANT_STATUSES = ["pending", "approved", "rejected"] as const;
+export const RESTAURANT_STATUSES = ["pending", "approved", "rejected", "suspended"] as const;
 export type RestaurantStatus = (typeof RESTAURANT_STATUSES)[number];
 
 // TypeScript interface define korche ekta Restaurant document er exact structure & types ki hobe tar jonno.
@@ -40,6 +40,16 @@ export interface RestaurantDocument {
   operatingHours?: OperatingHours[];
   tradeLicenseUrl?: string;
   ownerNidUrl?: string;
+  // UPDATE (vendor-payments real-data fix): the vendor Payments tab's
+  // "Available Balance" used to come from a process-global `mockBalance`
+  // variable in src/app/api/v1/vendor/payments/route.ts that reset on every
+  // server restart and was shared across every vendor. Real balance is now
+  // computed as (lifetime net earnings from delivered orders) minus this
+  // persisted field, which the withdraw route increments on each withdrawal
+  // request. There's still no real bKash/Nagad/bank payout rail wired up
+  // (that needs real merchant credentials), so a "withdrawal" only reduces
+  // this internal ledger — it does not move real money.
+  walletWithdrawn?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,6 +90,7 @@ const RestaurantSchema = new Schema<RestaurantDocument>(
     ],
     tradeLicenseUrl: { type: String, trim: true },
     ownerNidUrl: { type: String, trim: true },
+    walletWithdrawn: { type: Number, default: 0 },
   },
   { timestamps: true, strict: false }
 );
