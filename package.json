@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:admin": "node --env-file=.env scripts/create-admin.mjs",
-    "seed:tickets": "node --env-file=.env scripts/create-demo-tickets.mjs",
+    "seed:admin": "node --env-file=.env.local scripts/create-admin.mjs",
+    "seed:tickets": "node --env-file=.env.local scripts/create-demo-tickets.mjs",
     "mock:ws": "node --env-file=.env scripts/mock-ws-server.mjs"
   },
   "dependencies": {
@@ -43,6 +43,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@alloc/quick-lru": "^5.3.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

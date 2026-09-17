@@ -68,6 +68,7 @@ const dropdownItems = [
 export default function VendorHeader({ userName, userEmail }: VendorHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(true);
+  const initializedFromProfile = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { logoutUser } = useApp();
   const { data: profile } = useVendorProfile();
@@ -82,8 +83,13 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
     .toUpperCase()
     .slice(0, 2);
 
+  const effectiveStoreOpen = profile?.storeStatus !== undefined ? profile.storeStatus === "open" : storeOpen;
+
   useEffect(() => {
-    if (profile?.storeStatus) setStoreOpen(profile.storeStatus === "open");
+    if (!initializedFromProfile.current && profile?.storeStatus !== undefined) {
+      initializedFromProfile.current = true;
+      setStoreOpen(profile.storeStatus === "open");
+    }
   }, [profile?.storeStatus]);
 
   useEffect(() => {
@@ -105,8 +111,8 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
   };
 
   const handleStoreStatus = () => {
-    const nextStatus = storeOpen ? "closed" : "open";
-    setStoreOpen(!storeOpen);
+    const nextStatus = effectiveStoreOpen ? "closed" : "open";
+    setStoreOpen(!effectiveStoreOpen);
     updateProfile.mutate({ storeStatus: nextStatus });
   };
 
@@ -165,7 +171,7 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
           ) : (
             <Store size={13} />
           )}
-          {storeOpen ? "Open" : "Closed"}
+          {effectiveStoreOpen ? "Open" : "Closed"}
         </motion.button>
 
         <div className="relative" ref={dropdownRef}>

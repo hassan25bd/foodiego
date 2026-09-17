@@ -586,15 +586,31 @@ function SettingRow({
         type="button"
         onClick={onToggle}
         aria-label={`Toggle ${title}`}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition ${
-          enabled ? "bg-green-500" : "bg-slate-300"
+        className={`relative flex h-8 w-[52px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+          enabled ? "bg-emerald-500" : "bg-slate-300"
         }`}
       >
         <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
-            enabled ? "left-6" : "left-1"
+          className={`ml-[3px] flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md transition-all duration-200 ${
+            enabled ? "ml-auto" : "ml-0"
           }`}
-        />
+        >
+          {enabled && (
+            <svg
+              className="h-3.5 w-3.5 text-emerald-500"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          )}
+        </span>
       </button>
 
     </div>

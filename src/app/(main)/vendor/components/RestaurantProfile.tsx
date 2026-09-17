@@ -438,8 +438,14 @@ export default function RestaurantProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({ ...profile });
-  const [coverImage, setCoverImage] = useState(profile.cover);
-  const [avatarImage, setAvatarImage] = useState(profile.avatar);
+  const [coverImage, setCoverImage] = useState(() => {
+    if (typeof window === "undefined") return profile.cover;
+    return localStorage.getItem("foodiego_cover_image") || profile.cover;
+  });
+  const [avatarImage, setAvatarImage] = useState(() => {
+    if (typeof window === "undefined") return profile.avatar;
+    return localStorage.getItem("foodiego_avatar_image") || profile.avatar;
+  });
   const [coverError, setCoverError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -449,20 +455,6 @@ export default function RestaurantProfile() {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedCover = localStorage.getItem("foodiego_cover_image");
-    const savedAvatar = localStorage.getItem("foodiego_avatar_image");
-    if (savedCover) {
-      setCoverImage(savedCover);
-      setCoverError(false);
-    }
-    if (savedAvatar) {
-      setAvatarImage(savedAvatar);
-      setAvatarError(false);
-    }
-  }, []);
-
   const saveImageToLocalStorage = (key: string, dataUrl: string) => {
     try {
       localStorage.setItem(key, dataUrl);
@@ -470,10 +462,29 @@ export default function RestaurantProfile() {
       console.warn("localStorage save failed, using state only:", err);
     }
   };
-  const [dishes, setDishes] = useState([
-    { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", badge: "Chef Choice" },
-    { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80", badge: "Fresh" },
-  ]);
+  const [dishes, setDishes] = useState(() => {
+    if (typeof window === "undefined") {
+      return [
+        { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", badge: "Chef Choice" },
+        { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80", badge: "Fresh" },
+      ];
+    }
+    try {
+      const saved = localStorage.getItem("foodiego_dishes");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load saved dishes:", err);
+    }
+    return [
+      { id: 2, name: "Artisan Wood-Fired Pizza", category: "Signature", price: "৳550", rating: "4.8", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", badge: "Chef Choice" },
+      { id: 3, name: "Smoked Salmon Carpaccio", category: "Signature", price: "৳480", rating: "4.7", image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80", badge: "Fresh" },
+    ];
+  });
   const [dishImageErrors, setDishImageErrors] = useState<Record<number, boolean>>({});
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
@@ -492,21 +503,6 @@ export default function RestaurantProfile() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const saved = localStorage.getItem("foodiego_dishes");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setDishes(parsed);
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to load saved dishes:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
       localStorage.setItem("foodiego_dishes", JSON.stringify(dishes));
     } catch (err) {
       console.warn("Failed to save dishes:", err);
@@ -514,16 +510,7 @@ export default function RestaurantProfile() {
   }, [dishes]);
 
   const filteredDishes = selectedCategory === "All" ? dishes : dishes.filter((d) => d.category === selectedCategory);
-
-  useEffect(() => {
-    if (filteredDishes.length === 0) {
-      setBillboardIndex(0);
-      return;
-    }
-    if (billboardIndex >= filteredDishes.length) {
-      setBillboardIndex(0);
-    }
-  }, [filteredDishes.length]);
+  const validBillboardIndex = filteredDishes.length === 0 ? 0 : Math.min(billboardIndex, filteredDishes.length - 1);
 
   useEffect(() => {
     if (isAutoPlayPaused || filteredDishes.length <= 1) return;
@@ -977,7 +964,7 @@ export default function RestaurantProfile() {
 
                 <Live3DBillboard
                   dishes={filteredDishes}
-                  currentIndex={billboardIndex}
+                  currentIndex={validBillboardIndex}
                   onPrev={handlePrevDish}
                   onNext={handleNextDish}
                   onToggleAvailability={handleToggleAvailability}

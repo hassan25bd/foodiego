@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -63,6 +63,7 @@ export default function OrdersManagement() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [dateFilter, setDateFilter] = useState("Today");
   const [filterStatus, setFilterStatus] = useState("");
+  const initialOrderSet = useRef(false);
 
   const queryClient = useQueryClient();
 
@@ -118,7 +119,8 @@ export default function OrdersManagement() {
   };
 
   useEffect(() => {
-    if (!selectedOrder && orders.length > 0) {
+    if (!initialOrderSet.current && !selectedOrder && orders.length > 0) {
+      initialOrderSet.current = true;
       setSelectedOrder(orders[0]);
     }
   }, [selectedOrder, orders]);
