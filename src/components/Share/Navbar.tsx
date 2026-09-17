@@ -132,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      <header className="sticky top-0 z-50 w-full bg-[#FAF7EE] border-b border-[#E8E2D5]/70 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full bg-green-50 border-b border-[#E8E2D5]/70 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           
           {/* Left Section: Logo & Nav Links */}
