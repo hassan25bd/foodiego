@@ -390,8 +390,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </AnimatePresence>
                 </div>
               ) : (
+                // UPDATE (responsive fix): this block had no responsive
+                // class at all, so it rendered at every width — combined
+                // with the "lg:hidden" hamburger button right next to it,
+                // both showed at once below the lg breakpoint and pushed
+                // the header ~125px past the viewport (mobile already has
+                // its own Sign in/Order Now buttons inside the drawer
+                // below, so this is desktop-only now).
                 <motion.div
-                  className="flex items-center gap-3"
+                  className="hidden lg:flex items-center gap-3"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6, ...fadeDuration }}

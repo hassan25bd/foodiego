@@ -1,35 +1,30 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FoodCard, FoodItem } from './FoodCard';
 import { FoodDetailsModal } from './FoodDetailsModal';
 import { useApp } from '@/context/AppContext';
 
+// UPDATE (real food-catalog fix): this section used to fetch static demo
+// JSON (public/api/foods.json) — items unrelated to any real restaurant,
+// so "Add to cart" here could add a dish that didn't exist anywhere in
+// the real catalog. It now picks from AppContext's `catalogFoodItems`,
+// which is the same real menu data (from MongoDB) already flattened once
+// for every page that needs a flat food list.
 export const PickedForYouSection: React.FC = () => {
-  const [foods, setFoods] = useState<FoodItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
 
-  const { addToCart, toggleFavorite, favorites } = useApp();
+  const { addToCart, toggleFavorite, favorites, catalogFoodItems, isRestaurantsLoading } = useApp();
 
-  useEffect(() => {
-    fetch('/api/foods.json')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch food items');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setFoods(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load foods:', err);
-        setLoading(false);
-      });
-  }, []);
+  // Highest-rated items first, so "picked for you" leans on the one real
+  // quality signal available (restaurant rating).
+  const foods = useMemo(
+    () => [...catalogFoodItems].sort((a, b) => b.rating - a.rating).slice(0, 6),
+    [catalogFoodItems]
+  );
+
+  const loading = isRestaurantsLoading;
 
   return (
     <section className="w-full bg-transparent py-16 lg:py-24">
@@ -90,10 +85,17 @@ export const PickedForYouSection: React.FC = () => {
                     isFavorite: favorites.includes(food.id),
                   }}
                   onCardClick={(selected) => setSelectedFood(selected)}
-                  onAddToCart={(selected) => {
-                    if (addToCart) addToCart(selected);
-                    setSelectedFood(selected);
-                  }}
+                  // UPDATE (cart-quantity bug fix): this used to both add
+                  // the item to the cart AND open the customization modal
+                  // on the same click. The modal already has its own real
+                  // "Add to Cart" button, so a customer who then confirmed
+                  // there silently added the item twice (cart quantity 2
+                  // from what looked like one click). The footer button
+                  // now only adds once, matching how the same FoodCard is
+                  // wired everywhere else it's used (src/app/(public)/foods/page.tsx,
+                  // src/app/(public)/restaurants/[slug]/page.tsx) — clicking
+                  // the card itself opens the modal to customize instead.
+                  onAddToCart={(selected) => addToCart(selected)}
                   onToggleFavorite={(id) => toggleFavorite(id)}
                 />
               </div>
