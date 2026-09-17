@@ -9,7 +9,7 @@ import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { Restaurant } from "@/models/Restaurant";
 import { createSession } from "@/lib/session";
-import { adminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/lib/firebase/admin";
 import { consumeVerifiedRegistrationOtp } from "@/lib/otp";
 
 export interface RestaurantRegistrationFields {
@@ -32,7 +32,7 @@ export async function registerRestaurant(
 ): Promise<RestaurantFormState> {
   let decoded;
   try {
-    decoded = await adminAuth.verifyIdToken(idToken);
+    decoded = await getAdminAuth().verifyIdToken(idToken);
   } catch {
     return { message: "Your sign-in could not be verified. Please try again." };
   }

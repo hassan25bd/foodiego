@@ -26,7 +26,7 @@ export default function AiAssistantPage() {
     {
       id: "welcome",
       role: "model",
-      text: "Hi there! 👋 I'm the FoodieGo AI Assistant. Ask me about menu recommendations, delivery tracking, pricing, or anything food-related!",
+      text: "Hi there! 👋 I'm your Virtual Assistant. Ask me about menu recommendations, delivery tracking, pricing, or anything food-related!",
     },
   ]);
   const [input, setInput] = useState("");
@@ -130,7 +130,7 @@ export default function AiAssistantPage() {
           <Sparkles className="text-emerald-600" size={20} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">FoodieGo AI Assistant</h1>
+          <h1 className="text-lg font-bold text-slate-900">I'm Your Virtual Assistant</h1>
           <p className="text-xs text-slate-500">Ask about food, delivery, and more</p>
         </div>
       </div>

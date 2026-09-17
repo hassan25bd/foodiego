@@ -9,7 +9,7 @@ import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { Rider } from "@/models/Rider";
 import { createSession } from "@/lib/session";
-import { adminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/lib/firebase/admin";
 
 export interface RiderRegistrationFields {
   fullName: string;
@@ -30,7 +30,7 @@ export async function registerRider(
 ): Promise<RiderFormState> {
   let decoded;
   try {
-    decoded = await adminAuth.verifyIdToken(idToken);
+    decoded = await getAdminAuth().verifyIdToken(idToken);
   } catch {
     return { message: "Your sign-in could not be verified. Please try again." };
   }
