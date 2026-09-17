@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { FoodItem } from '@/components/FoodCard';
-import { auth } from '@/lib/firebase/client';
+import { getClientAuth } from '@/lib/firebase/client';
 import { logout } from '@/app/(public)/actions/auth';
 
 // Type definition for selected options like size or choice modifiers
@@ -173,7 +173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Effect to monitor Firebase authentication state changes in real-time
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(getClientAuth(), (firebaseUser) => {
             setUser(normalizeAuthUser(firebaseUser));
             setIsAuthLoading(false);
         });
@@ -186,8 +186,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const fetchRestaurants = async () => {
             setIsRestaurantsLoading(true);
             try {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:000';
-                const res = await fetch(`${API_URL}/api/restaurants`);
+                const res = await fetch('/api/restaurants.json');
 
                 if (!res.ok) {
                     throw new Error('Failed to fetch restaurants');
@@ -342,7 +341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Securely terminate user session across both Firebase and backend systems
     const logoutUser = async () => {
         try {
-            await signOut(auth);
+            await signOut(getClientAuth());
         } finally {
             await logout();
         }
