@@ -10,7 +10,8 @@ export default async function proxy(req: NextRequest) {
   const isProtectedRoute = protectedPrefixes.some((prefix) => path.startsWith(prefix));
   const isAuthRoute = authRoutes.includes(path);
 
-  if (!isProtectedRoute && !isAuthRoute) {
+  if (!isProtectedRoute && !isAuthRoute) 
+    {
     return NextResponse.next();
   }
 
@@ -18,7 +19,7 @@ export default async function proxy(req: NextRequest) {
 
   if (isProtectedRoute && !session) {
     const loginUrl = new URL("/auth/login", req.nextUrl);
-    loginUrl.searchParams.set("from", path);
+    loginUrl.searchParams.set("redirect", path);
     return NextResponse.redirect(loginUrl);
   }
 

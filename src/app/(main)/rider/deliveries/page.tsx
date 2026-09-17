@@ -711,7 +711,7 @@ export default function RiderDeliveriesPage() {
                 <span className="h-2 w-2 rounded-full bg-green-500" />
 
                 <span className="text-sm font-medium text-green-700">
-                  You're available
+                  You&apos;re available
                 </span>
 
               </div>
@@ -1381,9 +1381,14 @@ function DeliveryRow({
 
         </div>
 
+<<<<<<< HEAD
         {/* ROUTE */}
 
         <div className="hidden min-w-[230px] lg:block">
+=======
+        {/* Route */}
+        <div className="hidden min-w-57.5 lg:block">
+>>>>>>> main
 
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
             Delivery Route
@@ -1401,7 +1406,7 @@ function DeliveryRow({
 
             </div>
 
-            <div className="ml-[3px] h-3 border-l border-dashed border-slate-300" />
+            <div className="ml-0.75 h-3 border-l border-dashed border-slate-300" />
 
             <div className="flex items-center gap-2">
 
@@ -1417,9 +1422,14 @@ function DeliveryRow({
 
         </div>
 
+<<<<<<< HEAD
         {/* PAYOUT */}
 
         <div className="flex items-center justify-between gap-5 xl:block xl:min-w-[100px]">
+=======
+        {/* Payout */}
+        <div className="flex items-center justify-between gap-5 xl:block xl:min-w-25">
+>>>>>>> main
 
           <div>
 
@@ -1439,9 +1449,14 @@ function DeliveryRow({
 
         </div>
 
+<<<<<<< HEAD
         {/* ACTION */}
 
         <div className="flex items-center gap-2 xl:min-w-[160px] xl:justify-end">
+=======
+        {/* Action */}
+        <div className="flex items-center gap-2 xl:min-w-37.5 xl:justify-end">
+>>>>>>> main
 
           {isProgress && (
 

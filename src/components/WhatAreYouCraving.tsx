@@ -80,11 +80,11 @@ export const WhatAreYouCraving: React.FC<WhatAreYouCravingProps> = ({
   onSelectCategory,
 }) => {
   return (
-    <section className="w-full bg-[#FAF7EE] py-16 lg:py-24">
+    <section className="w-full bg-transparent py-16 lg:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header Section (Left Aligned) */}
-        <div className="mb-10 text-left">
+        <div className="mb-10 text-center">
           <p className="text-xs font-bold text-emerald-800 tracking-widest uppercase mb-2">
             {badge}
           </p>
