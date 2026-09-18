@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Sparkles,
@@ -137,6 +139,7 @@ function formatInline(text: string): string {
 }
 
 export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps) {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -393,6 +396,8 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
     }
     return QUICK_ACTIONS;
   }, [messages, detectCategory]);
+
+  if (pathname === "/ai-assistant") return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 font-sans">
