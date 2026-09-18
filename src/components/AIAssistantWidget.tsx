@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Sparkles,
@@ -137,9 +139,11 @@ function formatInline(text: string): string {
 }
 
 export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps) {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<"checking" | "connected" | "fallback">("checking");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -160,6 +164,41 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
     bottom: 0,
     left: 0,
   });
+
+  useEffect(() => {
+    const updateConstraints = () => {
+      setDragConstraints({
+        left: -window.innerWidth + 180,
+        right: 0,
+        top: -window.innerHeight + 80,
+        bottom: 0,
+      });
+    };
+    updateConstraints();
+    window.addEventListener("resize", updateConstraints);
+    return () => window.removeEventListener("resize", updateConstraints);
+  }, []);
+
+  useEffect(() => {
+    const checkApiStatus = async () => {
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "hello", chatHistory: [] }),
+        });
+        const data: { reply?: string; error?: string; source?: string } = await res.json();
+        if (data.source && data.source !== "local") {
+          setApiStatus("connected");
+        } else {
+          setApiStatus("fallback");
+        }
+      } catch {
+        setApiStatus("fallback");
+      }
+    };
+    checkApiStatus();
+  }, []);
 
   useEffect(() => {
     const updateConstraints = () => {
@@ -251,9 +290,14 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
           }),
         });
 
-        const data = await res.json();
+        const data: { reply?: string; error?: string; source?: string } = await res.json();
 
         if (data.reply) {
+          if (data.source && data.source !== "local") {
+            setApiStatus("connected");
+          } else {
+            setApiStatus("fallback");
+          }
           const category = detectCategory(query);
           const actions: ChatAction[] = [];
 
@@ -273,7 +317,10 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
             actions: actions.length > 0 ? actions : undefined,
           };
           setMessages((prev) => [...prev, aiMsg]);
-        } else if (data.error) {
+        }
+
+        if (data.error) {
+          setApiStatus("fallback");
           const errMsg: Message = {
             id: idCounter.current++,
             sender: "ai",
@@ -282,10 +329,19 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, errMsg]);
-        } else {
-          throw new Error("No reply received");
+        } else if (!data.reply) {
+          setApiStatus("fallback");
+          const errMsg: Message = {
+            id: idCounter.current++,
+            sender: "ai",
+            text: "The assistant couldn't respond right now. Please try again.",
+            isError: true,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errMsg]);
         }
       } catch (err) {
+        setApiStatus("fallback");
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
         const errMsg: Message = {
           id: idCounter.current++,
@@ -340,6 +396,8 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
     }
     return QUICK_ACTIONS;
   }, [messages, detectCategory]);
+
+  if (pathname === "/ai-assistant") return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 font-sans">
@@ -405,6 +463,24 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight">I&apos;m Your Virtual Assistant</h3>
+                {apiStatus === "connected" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#D1FAE5]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    AI powered
+                  </span>
+                )}
+                {apiStatus === "fallback" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#F6A429]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#F6A429] inline-block" />
+                    Limited mode
+                  </span>
+                )}
+                {apiStatus === "checking" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-pulse inline-block" />
+                    Loading&hellip;
+                  </span>
+                )}
               </div>
             </div>
             <button
