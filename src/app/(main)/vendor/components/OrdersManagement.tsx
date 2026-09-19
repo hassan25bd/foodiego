@@ -144,7 +144,7 @@ export default function OrdersManagement() {
 
   const currentOrders = orders.filter((order: Order) => order.status === safeTab);
 
-  const formatCurrency = (value?: number | null) => `৳${(value ?? 0).toLocaleString()}`;
+  const formatCurrency = (value?: number | null) => `$${(value ?? 0).toLocaleString()}`;
 
   const getTabCount = (status: Order["status"]) => orders.filter((o) => o.status === status).length;
 
@@ -448,13 +448,13 @@ export default function OrdersManagement() {
                                   <p className="text-sm font-black text-slate-900">{formatCurrency((item.price ?? 0) * (item.quantity ?? 0))}</p>
                                 </div>
                                 <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-slate-500">
-                                  <span>{item.quantity ?? 0}x • ৳{(item.price ?? 0).toLocaleString()} each</span>
+                                  <span>{item.quantity ?? 0}x • ${(item.price ?? 0).toLocaleString()} each</span>
                                   {item.addons && item.addons.length > 0 && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5">
                                       <span>Add</span>
                                       {item.addons.map((addon) => (
                                         <span key={addon.name} className="font-medium text-emerald-700">
-                                          {addon.name} (+৳{addon.price})
+                                          {addon.name} (+${addon.price})
                                         </span>
                                       ))}
                                     </span>

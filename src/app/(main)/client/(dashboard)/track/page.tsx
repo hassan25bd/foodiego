@@ -120,7 +120,7 @@ export default function ClientTrackOrderPage() {
           </div>
           <div className="text-left sm:text-right">
             <p className="text-xs text-gray-500">Order Total</p>
-            <p className="text-xl font-extrabold text-gray-900">৳{activeOrder.totalAmount.toLocaleString()}</p>
+            <p className="text-xl font-extrabold text-gray-900">${activeOrder.totalAmount.toLocaleString()}</p>
           </div>
         </div>
 

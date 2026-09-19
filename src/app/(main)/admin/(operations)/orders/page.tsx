@@ -105,7 +105,7 @@ export default async function AdminOrdersPage({
           </div>
           <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs">
             <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Total Revenue</span>
-            <p className="mt-2 text-2xl font-extrabold text-gray-900">৳{revenue.toLocaleString()}</p>
+            <p className="mt-2 text-2xl font-extrabold text-gray-900">${revenue.toLocaleString()}</p>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs">
             <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase">In Progress</span>
@@ -205,7 +205,7 @@ export default async function AdminOrdersPage({
                         <td className="py-4 px-6 text-gray-700">
                           {restaurant?.restaurantName || o.restaurantName || "—"}
                         </td>
-                        <td className="py-4 px-6 font-semibold text-gray-900">৳{o.totalAmount.toLocaleString()}</td>
+                        <td className="py-4 px-6 font-semibold text-gray-900">${o.totalAmount.toLocaleString()}</td>
                         <td className="py-4 px-6">
                           <span className="capitalize text-gray-600">{o.paymentMethod}</span>
                           <span

@@ -280,7 +280,7 @@ export default function MenuPortfolio() {
                             <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
                               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600"><Tag size={11} />{item.category}</span>
                             </td>
-                            <td className={`px-4 py-3 text-right text-sm font-black text-slate-900 ${density === "compact" ? "py-2" : ""}`}>৳{(item.price ?? 0).toLocaleString()}</td>
+                            <td className={`px-4 py-3 text-right text-sm font-black text-slate-900 ${density === "compact" ? "py-2" : ""}`}>${(item.price ?? 0).toLocaleString()}</td>
                             <td className={`px-4 py-3 ${density === "compact" ? "py-2" : ""}`}>
                               <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                                 <span className="font-bold text-slate-700">{item.ordersCount ?? 0} orders</span>
@@ -347,7 +347,7 @@ export default function MenuPortfolio() {
                               <span className="font-bold text-slate-700">{item.ordersCount ?? 0} orders</span>
                             </div>
                             <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                              <span className="text-sm font-black text-slate-900">৳{(item.price ?? 0).toLocaleString()}</span>
+                              <span className="text-sm font-black text-slate-900">${(item.price ?? 0).toLocaleString()}</span>
                               <div className="flex items-center gap-1">
                                 <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }} transition={springTransition} onClick={() => handleEdit(item)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100" aria-label={`Edit ${item.name}`}>
                                   <Pencil size={12} />
