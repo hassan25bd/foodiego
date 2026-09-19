@@ -160,6 +160,7 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [unread, setUnread] = useState(false);
   const [dragConstraints, setDragConstraints] = useState({
     top: 0,
     right: 0,
@@ -277,6 +278,7 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
       setMessages((prev) => [...prev, userMsg]);
       if (!textToSend) setInput("");
       setLoading(true);
+      setUnread(false);
 
       try {
         const res = await fetch("/api/ai/chat", {
@@ -396,6 +398,8 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
     return QUICK_ACTIONS;
   }, [messages, detectCategory]);
 
+  const hasUnread = unread;
+
   if (pathname === "/ai-assistant") return null;
 
   return (
@@ -417,8 +421,16 @@ export default function AIAssistantWidget({ onNavigate }: AIAssistantWidgetProps
           whileTap={{ scale: 0.92 }}
           whileDrag={{ scale: 1.15, cursor: "grabbing" }}
           aria-label="Open AI Assistant"
-          className="w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-[#124734] text-white flex items-center justify-center shadow-xl border border-emerald-700/40 cursor-grab active:cursor-grabbing touch-none select-none transition-shadow duration-300 hover:shadow-2xl hover:shadow-[#124734]/30"
+          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-[#124734] text-white flex items-center justify-center shadow-xl border border-emerald-700/40 cursor-grab active:cursor-grabbing touch-none select-none transition-shadow duration-300 hover:shadow-2xl hover:shadow-[#124734]/30 ${
+            hasUnread ? "animate-pulse" : ""
+          }`}
         >
+          {hasUnread && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F6A429] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-[#F6A429]"></span>
+            </span>
+          )}
           <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-[#F49D37] fill-[#F49D37]/20" />
         </motion.button>
       )}
