@@ -135,12 +135,13 @@ export const Footer: React.FC<FooterProps> = ({
     }
   };
 
-  // Hide Footer on dashboard paths
+  // Hide Footer on dashboard paths and auth pages (login/register)
   if (
     pathname?.startsWith('/admin') ||
     pathname?.startsWith('/vendor') ||
     pathname?.startsWith('/rider') ||
-    pathname?.startsWith('/client')
+    pathname?.startsWith('/client') ||
+    pathname?.startsWith('/auth')
   ) {
     return null;
   }

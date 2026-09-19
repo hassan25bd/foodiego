@@ -15,12 +15,18 @@ export interface RiderLocation {
 export interface DeliveryPoint {
   orderId: string;
   customerName: string;
-  lat: number;
-  lng: number;
+  // UPDATE (rider-GPS fix): destination coordinates are now optional. This
+  // codebase has no address-to-coordinate geocoding, so a delivery address
+  // stored as free text has no real lat/lng — rather than invent one, the
+  // map now simply skips the destination pin/route line for that order
+  // (see the render effects below) instead of plotting a fake location.
+  lat?: number;
+  lng?: number;
   riderLat?: number;
   riderLng?: number;
   riderSpeed?: number;
   riderId?: string;
+  riderName?: string;
   status: string;
 }
 
@@ -34,25 +40,18 @@ export interface DeliveryMapProps {
 const BANANI_COORD: LngLatLike = [90.4066, 23.7937];
 const RESTAURANT_COORD: LngLatLike = [90.4066, 23.7611];
 
-const riderColors: Record<string, string> = {
-  rider_001: "#10B981",
-  rider_002: "#3B82F6",
-  rider_003: "#8B5CF6",
-  rider_004: "#F59E0B",
-  rider_005: "#EF4444",
-  rider_006: "#06B6D4",
-  rider_007: "#EC4899",
-};
+// UPDATE (rider-GPS fix): riders used to be looked up by a fixed set of 7
+// fake IDs ("rider_001".."rider_007") with hardcoded names/colors. Real
+// riders have arbitrary Mongo ObjectIds, so colors are now generated
+// deterministically from the id itself and names come from the real
+// delivery data (DeliveryPoint.riderName) instead of a lookup table.
+const RIDER_COLOR_PALETTE = ["#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899"];
 
-const riderNames: Record<string, string> = {
-  rider_001: "Tom Smith",
-  rider_002: "Mike K.",
-  rider_003: "Rachel J.",
-  rider_004: "Elena V.",
-  rider_005: "David M.",
-  rider_006: "James P.",
-  rider_007: "Anna L.",
-};
+function colorForRider(riderId: string): string {
+  let hash = 0;
+  for (let i = 0; i < riderId.length; i++) hash = (hash * 31 + riderId.charCodeAt(i)) >>> 0;
+  return RIDER_COLOR_PALETTE[hash % RIDER_COLOR_PALETTE.length];
+}
 
 function createRestaurantMarkerEl(): HTMLElement {
   const el = document.createElement("div");
@@ -65,8 +64,8 @@ function createRestaurantMarkerEl(): HTMLElement {
   return el;
 }
 
-function createRiderMarkerEl(riderId: string, speed: number): HTMLElement {
-  const color = riderColors[riderId] || "#10B981";
+function createRiderMarkerEl(riderId: string, riderName: string, speed: number): HTMLElement {
+  const color = colorForRider(riderId);
   const el = document.createElement("div");
   el.className = "flex flex-col items-center cursor-pointer h-12";
   el.innerHTML = `
@@ -76,12 +75,9 @@ function createRiderMarkerEl(riderId: string, speed: number): HTMLElement {
         <path d="M10 2C5.58 2 2 5.58 2 10s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
       </svg>
     </div>
-    <span class="text-[8px] font-semibold mt-1 whitespace-nowrap"
-          style="color: ${color}; text-shadow: 0 0 4px rgba(0,0,0,0.3);">
-      ${speed} km/h
-    </span>
+    ${speed > 0 ? `<span class="text-[8px] font-semibold mt-1 whitespace-nowrap" style="color: ${color}; text-shadow: 0 0 4px rgba(0,0,0,0.3);">${speed} km/h</span>` : ""}
   `;
-  el.title = `${riderNames[riderId] || "Rider"} • ${speed} km/h`;
+  el.title = riderName;
   return el;
 }
 
@@ -140,10 +136,11 @@ export default function DeliveryMap({ riderLocations, deliveries, onRiderClick, 
         if (delivery.status === "Delivered" || !delivery.riderLat || !delivery.riderLng) return;
 
         const rLoc = riderLocations.find((rl) => rl.orderId === delivery.orderId);
-        const riderId = rLoc?.riderId || delivery.riderId || "rider_001";
+        const riderId = rLoc?.riderId || delivery.riderId || delivery.orderId;
+        const riderName = delivery.riderName || "Rider";
         const speed = rLoc?.speed || delivery.riderSpeed || 0;
 
-        const riderEl = createRiderMarkerEl(riderId, speed);
+        const riderEl = createRiderMarkerEl(riderId, riderName, speed);
         const riderMarker = new MaplibreMarker({ element: riderEl })
           .setLngLat([delivery.riderLng, delivery.riderLat] as LngLatLike)
           .addTo(map);
@@ -152,6 +149,10 @@ export default function DeliveryMap({ riderLocations, deliveries, onRiderClick, 
         if (onRiderClick) {
           riderEl.addEventListener("click", () => onRiderClick(riderId));
         }
+
+        // No address-to-coordinate geocoding exists, so a destination pin
+        // and route line are only drawn when a real lat/lng is present.
+        if (delivery.lat == null || delivery.lng == null) return;
 
         new MaplibreMarker({ element: createDestinationMarkerEl() })
           .setLngLat([delivery.lng, delivery.lat] as LngLatLike)
@@ -181,7 +182,7 @@ export default function DeliveryMap({ riderLocations, deliveries, onRiderClick, 
           source: sourceId,
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
-            "line-color": riderColors[riderId] || "#10B981",
+            "line-color": colorForRider(riderId),
             "line-width": 3,
             "line-opacity": 0.7,
           },
@@ -212,7 +213,7 @@ export default function DeliveryMap({ riderLocations, deliveries, onRiderClick, 
       }
 
       const sourceId = routeSourcesRef.current.get(delivery.orderId);
-      if (sourceId && delivery.riderLat && delivery.riderLng) {
+      if (sourceId && delivery.riderLat && delivery.riderLng && delivery.lat != null && delivery.lng != null) {
         const source = map.getSource(sourceId) as unknown as { setData: (data: unknown) => void };
         if (source && source.setData) {
           source.setData({

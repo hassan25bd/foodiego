@@ -18,6 +18,8 @@ import {
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import OnlinePaymentModal from '@/components/client/checkout/OnlinePaymentModal';
+import { useApp } from '@/context/AppContext';
+import { ordersApi } from '@/lib/clientApi';
 
 interface CheckoutForm {
   fullName: string;
@@ -34,7 +36,7 @@ const inputClasses =
   'mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10';
 
 export default function CheckoutPage() {
-  const { cart, clearCart } = useApp();
+  const { user, isAuthLoading, cart, clearCart, restaurants } = useApp();
   const [formData, setFormData] = useState<CheckoutForm>({
     fullName: '',
     email: '',
@@ -47,73 +49,127 @@ export default function CheckoutPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [orderId, setOrderId] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const subtotal = cart.reduce(
-    (sum, item) => sum + ((item.totalUnitPrice ?? item.price) * item.quantity),
-    0
-  );
-  const deliveryFee = cart.length > 0 ? 2.99 : 0;
-  const total = subtotal + deliveryFee;
+  const cartItems = cart.map((item) => ({
+    id: item.cartItemId,
+    menuItemId: item.id,
+    name: item.name,
+    price: item.totalUnitPrice,
+    quantity: item.quantity,
+    vendor: item.restaurantName,
+    specialInstructions: item.specialInstructions,
+  }));
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // UPDATE (checkout-fees fix): this used to be a flat ৳80 for every order,
+  // regardless of restaurant, even though each restaurant already carries
+  // its own real deliveryFee (set at signup / editable via the vendor
+  // profile API). Falls back to ৳80 only when the cart's restaurant can't
+  // be matched (e.g. a demo-catalog item with no real Restaurant document).
+  const restaurantName = cartItems[0]?.vendor;
+  const matchedRestaurant = restaurants.find((r) => r.restaurantName === restaurantName);
+  const shippingFee = cartItems.length === 0 ? 0 : matchedRestaurant?.deliveryFee || 80;
+  const total = subtotal + shippingFee;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (cart.length === 0) return;
+  const placeOrder = async () => {
+    if (cartItems.length === 0) return;
+
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cart.map((item) => ({
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            totalUnitPrice: item.totalUnitPrice,
-            imageUrl: item.imageUrl,
-            addons: item.selectedAddons,
-          })),
-          deliveryAddress: formData.address,
-          deliveryPhone: formData.phone,
-          paymentMethod: formData.paymentMethod,
-          notes: formData.note,
-        }),
+      const { order } = await ordersApi.place({
+        restaurantName: cartItems[0].vendor || 'Restaurant',
+        items: cartItems.map((item) => ({
+          menuItemId: item.menuItemId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          specialInstructions: item.specialInstructions || undefined,
+        })),
+        subtotal,
+        deliveryFee: shippingFee,
+        deliveryAddress: `${formData.address}, ${formData.area}, ${formData.city}`,
+        deliveryNote: formData.note || undefined,
+        city: formData.city,
+        paymentMethod: formData.paymentMethod,
       });
-      const data = await res.json();
-      if (data.success) {
-        setOrderId(data.order?.orderId || '');
-        clearCart();
-        setIsSuccess(true);
-      }
-    } catch {
+      setOrderNumber(order._id.slice(-8).toUpperCase());
+      clearCart();
       setIsSuccess(true);
+    } catch {
+      setSubmitError('We could not place your order. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isMounted || cart.length === 0) {
+  // UPDATE (checkout-payment fix): "Place order" used to fire unconditionally,
+  // even when "Online payment" was selected — a shopper could pick it, close
+  // the payment modal without entering anything, and the order still went
+  // through as if paid. Choosing "online" now opens the payment step and
+  // the order is only created once that step reports success (see
+  // handlePaymentSuccess below); Cash on Delivery still submits immediately,
+  // since there's nothing to collect upfront.
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cartItems.length === 0) return;
+
+    if (formData.paymentMethod === 'online') {
+      setIsPaymentModalOpen(true);
+      return;
+    }
+    await placeOrder();
+  };
+
+  const handlePaymentSuccess = async () => {
+    setIsPaymentModalOpen(false);
+    await placeOrder();
+  };
+
+  if (!isAuthLoading && !user) {
     return (
-      <main className="min-h-[calc(100vh-80px)] bg-[#FAF7EE] flex items-center justify-center">
-        <div className="text-center">
-          <ShoppingBag className="w-16 h-16 mx-auto text-[#124734]/10 mb-4" />
-          <h1 className="text-2xl font-bold text-[#0F172A]">Your cart is empty</h1>
-          <p className="text-gray-500 mt-2">Add some items before checking out.</p>
-          <Link href="/" className="inline-flex mt-6 items-center gap-2 bg-[#124734] text-white font-bold px-6 py-3 rounded-2xl hover:bg-[#0e3320] transition-all shadow-lg">
-            Explore Menu
+      <main className="flex min-h-screen items-center justify-center bg-[#f7faf8] px-4 py-12 text-slate-900">
+        <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_60px_rgba(21,70,45,0.1)]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <LockKeyhole size={26} />
+          </div>
+          <h1 className="mt-5 text-xl font-bold tracking-tight text-slate-950">Sign in to check out</h1>
+          <p className="mt-2 text-sm text-slate-500">You need an account so we can attach this order to you and let you track it afterwards.</p>
+          <Link
+            href="/auth/login?redirect=/client/checkout"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-[#15462d] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#103b26]"
+          >
+            Sign in
           </Link>
-        </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!isSuccess && cartItems.length === 0) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f7faf8] px-4 py-12 text-slate-900">
+        <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_60px_rgba(21,70,45,0.1)]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <ShoppingBag size={26} />
+          </div>
+          <h1 className="mt-5 text-xl font-bold tracking-tight text-slate-950">Your cart is empty</h1>
+          <p className="mt-2 text-sm text-slate-500">Add a few dishes before heading to checkout.</p>
+          <Link
+            href="/foods"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-[#15462d] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#103b26]"
+          >
+            Browse foods
+          </Link>
+        </section>
       </main>
     );
   }
@@ -126,8 +182,8 @@ export default function CheckoutPage() {
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Order confirmed</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">Your order is on its way</h1>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">Thanks for ordering{formData.fullName ? `, ${formData.fullName}` : ''}. We have received your order and are getting it ready.</p>
-          <div className="mt-7 divide-y divide-[#ECE7D9] rounded-[24px] border border-[#ECE7D9] bg-[#FAF7EE] text-left text-sm">
-            <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Order number</span><strong className="text-[#124734]">{orderId || 'FG-ORDER'}</strong></div>
+          <div className="mt-7 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50 text-left text-sm">
+            <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Order number</span><strong>#{orderNumber}</strong></div>
             <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Payment</span><strong>{formData.paymentMethod === 'cod' ? 'Cash on delivery' : 'Online payment'}</strong></div>
             <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Estimated delivery</span><strong>2-3 business days</strong></div>
           </div>
@@ -172,21 +228,28 @@ export default function CheckoutPage() {
             <section className="rounded-[24px] border border-[#ECE7D9] bg-white p-5 shadow-sm sm:p-7">
               <div className="flex items-start gap-3 border-b border-[#ECE7D9] pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#124734]"><CreditCard size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 3</p><h2 className="mt-1 text-lg font-bold text-slate-950">Payment method</h2><p className="mt-1 text-sm text-slate-500">Choose how you&apos;d like to pay.</p></div></div>
               <div className="mt-5 space-y-3">
-                <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-[22px] border p-4 transition ${formData.paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-[#ECE7D9] hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="cod" checked={formData.paymentMethod === 'cod'} onChange={() => setFormData((prev) => ({ ...prev, paymentMethod: 'cod' }))} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Cash on delivery</strong><span className="mt-1 block text-xs text-slate-500">Pay with cash when your order arrives.</span></span></span><Truck className="shrink-0 text-emerald-700" size={20} /></label>
-                <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-[22px] border p-4 transition ${formData.paymentMethod === 'online' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-[#ECE7D9] hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="online" checked={formData.paymentMethod === 'online'} onChange={() => { setFormData((prev) => ({ ...prev, paymentMethod: 'online' })); setIsPaymentModalOpen(true); }} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Online payment</strong><span className="mt-1 block text-xs text-slate-500">Pay securely online with a supported method.</span></span></span><CreditCard className="shrink-0 text-emerald-700" size={20} /></label>
+                <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition ${formData.paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-slate-200 hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="cod" checked={formData.paymentMethod === 'cod'} onChange={() => setFormData((prev) => ({ ...prev, paymentMethod: 'cod' }))} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Cash on delivery</strong><span className="mt-1 block text-xs text-slate-500">Pay with cash when your order arrives.</span></span></span><Truck className="shrink-0 text-emerald-700" size={20} /></label>
+                <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition ${formData.paymentMethod === 'online' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-slate-200 hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="online" checked={formData.paymentMethod === 'online'} onChange={() => setFormData((prev) => ({ ...prev, paymentMethod: 'online' }))} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Online payment</strong><span className="mt-1 block text-xs text-slate-500">Pay securely online with a supported method.</span></span></span><CreditCard className="shrink-0 text-emerald-700" size={20} /></label>
               </div>
             </section>
           </div>
 
-          <aside className="lg:sticky lg:top-6"><section className="rounded-[24px] border border-[#ECE7D9] bg-white p-5 shadow-[0_14px_40px_rgba(18,71,52,0.08)] sm:p-6">
-            <div className="flex items-center justify-between border-b border-[#ECE7D9] pb-5"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Your order</p><h2 className="mt-1 text-xl font-bold text-slate-950">Order summary</h2></div><span className="rounded-full bg-[#FAF7EE] px-2.5 py-1 text-xs font-semibold text-slate-500">{cart.length} items</span></div>
-            <div className="divide-y divide-[#ECE7D9] py-2">{cart.map((item) => <div key={item.cartItemId} className="flex items-start justify-between gap-4 py-4 text-sm"><div><p className="font-semibold text-slate-900">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.quantity} × ৳{((item.totalUnitPrice ?? item.price) * item.quantity).toFixed(2)} · {item.restaurantName}</p></div><span className="shrink-0 font-bold text-slate-900">৳{((item.totalUnitPrice ?? item.price) * item.quantity).toFixed(2)}</span></div>)}</div>
-            <div className="space-y-3 border-t border-[#ECE7D9] pt-5 text-sm"><div className="flex justify-between text-slate-500"><span>Subtotal</span><strong className="text-slate-900">৳{subtotal.toFixed(2)}</strong></div><div className="flex justify-between text-slate-500"><span>Delivery fee</span><strong className="text-slate-900">৳{deliveryFee.toFixed(2)}</strong></div><div className="mt-4 flex items-end justify-between border-t border-[#ECE7D9] pt-5"><span className="font-bold text-slate-900">Total to pay</span><strong className="text-2xl font-bold text-[#124734]">৳{total.toFixed(2)}</strong></div></div>
-            <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#124734] px-5 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-950/10 transition hover:bg-[#0e3320] focus:outline-none focus:ring-4 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Processing order...</> : <>Place order · ৳{total.toFixed(2)} <Check size={17} /></>}</button>
+          <aside className="lg:sticky lg:top-6"><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_40px_rgba(21,70,45,0.08)] sm:p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-5"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Your order</p><h2 className="mt-1 text-xl font-bold text-slate-950">Order summary</h2></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">{cartItems.length} items</span></div>
+            <div className="divide-y divide-slate-100 py-2">{cartItems.map((item) => <div key={item.id} className="flex items-start justify-between gap-4 py-4 text-sm"><div><p className="font-semibold text-slate-900">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.quantity} × ৳{item.price.toLocaleString()} · {item.vendor}</p></div><span className="shrink-0 font-bold text-slate-900">৳{(item.price * item.quantity).toLocaleString()}</span></div>)}</div>
+            <div className="space-y-3 border-t border-slate-100 pt-5 text-sm"><div className="flex justify-between text-slate-500"><span>Subtotal</span><strong className="text-slate-900">৳{subtotal.toLocaleString()}</strong></div><div className="flex justify-between text-slate-500"><span>Delivery fee</span><strong className="text-slate-900">৳{shippingFee}</strong></div><div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-5"><span className="font-bold text-slate-900">Total to pay</span><strong className="text-2xl font-bold text-[#15462d]">৳{total.toLocaleString()}</strong></div></div>
+            <button type="submit" disabled={isSubmitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#15462d] px-5 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-950/10 transition hover:bg-[#103b26] focus:outline-none focus:ring-4 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Processing order...</> : formData.paymentMethod === 'online' ? <>Continue to payment · ৳{total.toLocaleString()} <Check size={17} /></> : <>Place order · ৳{total.toLocaleString()} <Check size={17} /></>}</button>
+            {submitError && <p className="mt-3 text-center text-xs font-semibold text-rose-600">{submitError}</p>}
             <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-500"><ShieldCheck className="mt-0.5 shrink-0 text-emerald-700" size={15} /><span>Your payment information is protected. You can review everything before placing the order.</span></div>
           </section></aside>
         </form>
-        <OnlinePaymentModal isOpen={isPaymentModalOpen} amount={total} onClose={() => setIsPaymentModalOpen(false)} />
+        <OnlinePaymentModal
+          isOpen={isPaymentModalOpen}
+          amount={total}
+          deliveryFee={shippingFee}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onSuccess={handlePaymentSuccess}
+        />
       </div>
     </main>
   );

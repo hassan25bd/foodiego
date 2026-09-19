@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -19,7 +20,16 @@ import {
   X,
   User,
   Star,
+  Globe,
 } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+import NotificationBell from "@/components/shared/NotificationBell";
+
+// UPDATE (rider-dashboard real-data fix): the sidebar used to hardcode
+// "Afrin" and a fixed "4.9 Rating" on every rider sub-page (orders,
+// deliveries, earnings, shift-history). It now shows the logged-in
+// rider's real name (from AppContext) and real rating, fetched from the
+// same /api/v1/rider/summary route the dashboard uses.
 
 interface RiderShellContextValue {
   mobileMenu: boolean;
@@ -53,6 +63,21 @@ export default function RiderShell({
   activePath,
 }: RiderShellProps) {
   const [mobileMenu, setMobileMenu] = useState(false);
+  const { user } = useApp();
+  const [rating, setRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/v1/rider/summary");
+      if (!res.ok || cancelled) return;
+      const data = (await res.json()) as { performance: { rating: number } };
+      if (!cancelled) setRating(data.performance.rating);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <RiderShellContext.Provider value={{ mobileMenu, setMobileMenu }}>
@@ -81,13 +106,13 @@ export default function RiderShell({
                     <User className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800">Afrin</p>
+                    <p className="font-semibold text-slate-800">{user?.name || "Rider"}</p>
                     <p className="text-xs font-medium text-green-500">
                       Rider
                     </p>
                     <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
                       <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>4.9 Rating</span>
+                      <span>{rating !== null ? rating.toFixed(1) : "—"} Rating</span>
                     </div>
                   </div>
                 </div>
@@ -117,6 +142,19 @@ export default function RiderShell({
                     </motion.a>
                   );
                 })}
+
+                {/* Return to Home */}
+                <motion.a
+                  href="/"
+                  onClick={() => setMobileMenu(false)}
+                  whileHover={{ x: 2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="mb-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-green-100 hover:text-green-500"
+                >
+                  <Globe className="h-4 w-4" />
+                  Return to Home
+                </motion.a>
 
                 {/* Logout */}
                 <motion.button
@@ -149,8 +187,11 @@ export default function RiderShell({
 
           {/* ================= MAIN ================= */}
           <main className="min-w-0 flex-1">
-            {/* Mobile Menu Button */}
-            <MobileMenuButton />
+            {/* Top bar: mobile menu button + notifications */}
+            <div className="flex items-center justify-between px-5 pt-5 lg:justify-end lg:px-8">
+              <MobileMenuButton />
+              <NotificationBell buttonClassName="relative rounded-lg border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900" />
+            </div>
 
             {/* Content with fade-in */}
             <motion.div
@@ -173,16 +214,14 @@ export default function RiderShell({
 function MobileMenuButton() {
   const { setMobileMenu } = useRiderShell();
   return (
-    <div className="px-5 pt-5 lg:hidden">
-      <motion.button
-        type="button"
-        onClick={() => setMobileMenu(true)}
-        whileTap={{ scale: 0.95 }}
-        className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition hover:bg-slate-50"
-        aria-label="Open menu"
-      >
-        <Menu className="h-5 w-5 text-slate-700" />
-      </motion.button>
-    </div>
+    <motion.button
+      type="button"
+      onClick={() => setMobileMenu(true)}
+      whileTap={{ scale: 0.95 }}
+      className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition hover:bg-slate-50 lg:hidden"
+      aria-label="Open menu"
+    >
+      <Menu className="h-5 w-5 text-slate-700" />
+    </motion.button>
   );
 }
