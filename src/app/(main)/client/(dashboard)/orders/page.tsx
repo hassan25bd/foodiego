@@ -311,7 +311,7 @@ export default function ClientOrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-3 sm:shrink-0">
-                    <p className="text-sm font-extrabold text-gray-900">৳{order.totalAmount.toLocaleString()}</p>
+                    <p className="text-sm font-extrabold text-gray-900">${order.totalAmount.toLocaleString()}</p>
                     {status === "On the way" && (
                       <Link
                         href="/client/track"

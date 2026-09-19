@@ -188,7 +188,7 @@ function ModalBody({ onClose, editItem }: { onClose: () => void; editItem?: Menu
 
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Price (BDT ৳)
+                    Price (USD $)
                   </label>
                   <input
                     type="number"
@@ -297,7 +297,7 @@ function ModalBody({ onClose, editItem }: { onClose: () => void; editItem?: Menu
                             placeholder="Add-on name"
                           />
                           <div className="flex items-center gap-1 rounded-xl border border-[#E5E7EB] px-2 py-2">
-                            <span className="text-xs text-gray-400">৳</span>
+                            <span className="text-xs text-gray-400">$</span>
                             <input
                               type="number"
                               value={addon.price || ""}
