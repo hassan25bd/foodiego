@@ -8,6 +8,7 @@ export interface ClientOrderItem {
   name: string;
   price: number;
   quantity: number;
+  specialInstructions?: string;
 }
 
 export interface ClientOrder {
@@ -20,9 +21,10 @@ export interface ClientOrder {
   totalAmount: number;
   deliveryFee: number;
   deliveryAddress: string;
+  deliveryNote?: string;
   paymentMethod: "cash" | "card" | "online";
   paymentStatus: "pending" | "paid" | "failed";
-  status: "pending" | "confirmed" | "preparing" | "out_for_delivery" | "delivered" | "cancelled";
+  status: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled";
   createdAt: string;
 }
 
@@ -52,6 +54,7 @@ interface PlaceOrderBody {
   subtotal: number;
   deliveryFee: number;
   deliveryAddress: string;
+  deliveryNote?: string;
   city: string;
   paymentMethod: "cod" | "online";
 }
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
         totalAmount: body.subtotal + body.deliveryFee,
         deliveryFee: body.deliveryFee,
         deliveryAddress: body.deliveryAddress,
+        deliveryNote: body.deliveryNote || undefined,
         city: body.city,
         paymentMethod: body.paymentMethod === "online" ? "online" : "cash",
       },
