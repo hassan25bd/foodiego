@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -16,8 +16,8 @@ import {
   User,
 } from 'lucide-react';
 import Link from 'next/link';
-import OnlinePaymentModal from '@/components/client/checkout/OnlinePaymentModal';
 import { useApp } from '@/context/AppContext';
+import OnlinePaymentModal from '@/components/client/checkout/OnlinePaymentModal';
 import { ordersApi } from '@/lib/clientApi';
 
 interface CheckoutForm {
@@ -51,6 +51,7 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const cartItems = cart.map((item) => ({
     id: item.cartItemId,
@@ -174,8 +175,8 @@ export default function CheckoutPage() {
 
   if (isSuccess) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f7faf8] px-4 py-12 text-slate-900">
-        <section className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-[0_18px_60px_rgba(21,70,45,0.1)] sm:p-10">
+      <main className="flex min-h-screen items-center justify-center bg-[#FAF7EE] px-4 py-12 text-slate-900">
+        <section className="w-full max-w-lg rounded-[24px] border border-[#ECE7D9] bg-white p-7 text-center shadow-[0_18px_60px_rgba(18,71,52,0.1)] sm:p-10">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 size={34} strokeWidth={2.5} /></div>
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Order confirmed</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">Your order is on its way</h1>
@@ -185,19 +186,19 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Payment</span><strong>{formData.paymentMethod === 'cod' ? 'Cash on delivery' : 'Online payment'}</strong></div>
             <div className="flex items-center justify-between px-4 py-3.5"><span className="text-slate-500">Estimated delivery</span><strong>2-3 business days</strong></div>
           </div>
-          <Link href="/" className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-[#15462d] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#103b26] focus:outline-none focus:ring-4 focus:ring-emerald-500/20">Continue shopping</Link>
+          <Link href="/" className="mt-7 inline-flex w-full items-center justify-center rounded-[22px] bg-[#124734] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#0e3320] focus:outline-none focus:ring-4 focus:ring-emerald-500/20">Continue shopping</Link>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f7faf8] text-slate-900">
+    <main className="min-h-screen bg-[#FAF7EE] text-slate-900">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <header className="mb-8 flex items-center justify-between gap-4">
           <div>
-            <Link href="/cart" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-[#15462d] focus:outline-none focus:ring-4 focus:ring-emerald-500/20"><ArrowLeft size={16} /> Back to cart</Link>
-            <div className="mt-5 flex items-center gap-2"><ShoppingBag className="text-[#15462d]" size={23} /><h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Checkout</h1></div>
+            <Link href="/cart" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-[#124734] focus:outline-none focus:ring-4 focus:ring-emerald-500/20"><ArrowLeft size={16} /> Back to cart</Link>
+            <div className="mt-5 flex items-center gap-2"><ShoppingBag className="text-[#124734]" size={23} /><h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Checkout</h1></div>
             <p className="mt-1 text-sm text-slate-500">Almost there. Confirm your details and we&apos;ll handle the rest.</p>
           </div>
           <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-sm sm:flex"><LockKeyhole size={14} /> Secure checkout</div>
@@ -205,8 +206,8 @@ export default function CheckoutPage() {
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[minmax(0,1fr)_370px]">
           <div className="space-y-5">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex items-start gap-3 border-b border-slate-100 pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#15462d]"><MapPin size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 1</p><h2 className="mt-1 text-lg font-bold text-slate-950">Delivery address</h2><p className="mt-1 text-sm text-slate-500">Where should we bring your order?</p></div></div>
+            <section className="rounded-[24px] border border-[#ECE7D9] bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex items-start gap-3 border-b border-[#ECE7D9] pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#124734]"><MapPin size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 1</p><h2 className="mt-1 text-lg font-bold text-slate-950">Delivery address</h2><p className="mt-1 text-sm text-slate-500">Where should we bring your order?</p></div></div>
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Full name <span className="text-rose-500">*</span><span className="relative block"><User className="pointer-events-none absolute left-3 top-5 text-slate-400" size={16} /><input type="text" name="fullName" required value={formData.fullName} onChange={handleInputChange} placeholder="e.g. Md. Naimur Rahman" className={`${inputClasses} pl-10`} /></span></label>
                 <label className="text-sm font-semibold text-slate-700">Email address <span className="text-rose-500">*</span><span className="relative block"><Mail className="pointer-events-none absolute left-3 top-5 text-slate-400" size={16} /><input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="naimur@example.com" className={`${inputClasses} pl-10`} /></span></label>
@@ -218,13 +219,13 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex items-start gap-3 border-b border-slate-100 pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#15462d]"><Truck size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 2</p><h2 className="mt-1 text-lg font-bold text-slate-950">Delivery information</h2><p className="mt-1 text-sm text-slate-500">Simple, reliable delivery to your door.</p></div></div>
-              <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3"><div className="rounded-xl bg-slate-50 p-3.5"><p className="text-xs text-slate-500">Estimated arrival</p><p className="mt-1 font-bold text-slate-900">2-3 business days</p></div><div className="rounded-xl bg-slate-50 p-3.5"><p className="text-xs text-slate-500">Delivery type</p><p className="mt-1 font-bold text-slate-900">Doorstep delivery</p></div><div className="rounded-xl bg-slate-50 p-3.5"><p className="text-xs text-slate-500">Contact</p><p className="mt-1 font-bold text-slate-900">Rider will call</p></div></div>
+            <section className="rounded-[24px] border border-[#ECE7D9] bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex items-start gap-3 border-b border-[#ECE7D9] pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#124734]"><Truck size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 2</p><h2 className="mt-1 text-lg font-bold text-slate-950">Delivery information</h2><p className="mt-1 text-sm text-slate-500">Simple, reliable delivery to your door.</p></div></div>
+              <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3"><div className="rounded-xl bg-[#FAF7EE] p-3.5"><p className="text-xs text-slate-500">Estimated arrival</p><p className="mt-1 font-bold text-slate-900">2-3 business days</p></div><div className="rounded-xl bg-[#FAF7EE] p-3.5"><p className="text-xs text-slate-500">Delivery type</p><p className="mt-1 font-bold text-slate-900">Doorstep delivery</p></div><div className="rounded-xl bg-[#FAF7EE] p-3.5"><p className="text-xs text-slate-500">Contact</p><p className="mt-1 font-bold text-slate-900">Rider will call</p></div></div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex items-start gap-3 border-b border-slate-100 pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#15462d]"><CreditCard size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 3</p><h2 className="mt-1 text-lg font-bold text-slate-950">Payment method</h2><p className="mt-1 text-sm text-slate-500">Choose how you&apos;d like to pay.</p></div></div>
+            <section className="rounded-[24px] border border-[#ECE7D9] bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex items-start gap-3 border-b border-[#ECE7D9] pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#124734]"><CreditCard size={19} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Step 3</p><h2 className="mt-1 text-lg font-bold text-slate-950">Payment method</h2><p className="mt-1 text-sm text-slate-500">Choose how you&apos;d like to pay.</p></div></div>
               <div className="mt-5 space-y-3">
                 <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition ${formData.paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-slate-200 hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="cod" checked={formData.paymentMethod === 'cod'} onChange={() => setFormData((prev) => ({ ...prev, paymentMethod: 'cod' }))} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Cash on delivery</strong><span className="mt-1 block text-xs text-slate-500">Pay with cash when your order arrives.</span></span></span><Truck className="shrink-0 text-emerald-700" size={20} /></label>
                 <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition ${formData.paymentMethod === 'online' ? 'border-emerald-500 bg-emerald-50/60 ring-4 ring-emerald-500/10' : 'border-slate-200 hover:border-emerald-200'}`}><span className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="online" checked={formData.paymentMethod === 'online'} onChange={() => setFormData((prev) => ({ ...prev, paymentMethod: 'online' }))} className="h-4 w-4 accent-emerald-700" /><span><strong className="block text-sm text-slate-900">Online payment</strong><span className="mt-1 block text-xs text-slate-500">Pay securely online with a supported method.</span></span></span><CreditCard className="shrink-0 text-emerald-700" size={20} /></label>
