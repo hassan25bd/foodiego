@@ -1,9 +1,11 @@
 "use client";
 
 import React from 'react';
-import { Bell, HelpCircle, Menu } from 'lucide-react';
+import Link from 'next/link';
+import { HelpCircle, Home, Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAdminMobileNav } from './AdminMobileNavContext';
+import NotificationBell from '@/components/shared/NotificationBell';
 
 interface AdminHeaderProps {
   adminName?: string;
@@ -68,14 +70,20 @@ const AdminHeader = ({ adminName }: AdminHeaderProps) => {
           />
         </div>
 
-        {/* Notification Icon Button */}
-        <button 
-          aria-label="Notifications"
-          className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all relative shadow-2xs"
+        {/* Return to main website */}
+        <Link
+          href="/"
+          aria-label="Return to home page"
+          className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all shadow-2xs"
         >
-          <Bell size={18} />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-        </button>
+          <Home size={18} />
+        </Link>
+
+        {/* Notification Bell */}
+        <NotificationBell
+          iconSize={18}
+          buttonClassName="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all relative shadow-2xs"
+        />
 
         {/* Help / Support Button */}
         <button 

@@ -23,6 +23,7 @@ import {
 import { useApp } from "@/context/AppContext";
 import LogoGreen from "./LogoGreen";
 import CartDrawer from "@/components/client/CartDrawer";
+import NotificationBell from "@/components/shared/NotificationBell";
 
 const springSlow: Transition = { type: "spring", stiffness: 300, damping: 28 };
 const fadeDuration: Transition = { duration: 0.25, ease: "easeOut" };
@@ -127,7 +128,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/vendor") ||
     pathname?.startsWith("/rider") ||
-    pathname?.startsWith("/client")
+    pathname?.startsWith("/client") ||
+    pathname?.startsWith("/auth")
   ) {
     return null;
   }
@@ -306,6 +308,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </AnimatePresence>
               </motion.button>
+
+              {/* Notifications — signed-in users only */}
+              {user && (
+                <NotificationBell buttonClassName="relative p-2 text-[#6B7280] hover:text-[#15462D] transition-colors duration-200 bg-white/60 hover:bg-white rounded-full border border-gray-200/50 cursor-pointer" />
+              )}
 
               {/* User Dropdown */}
               {user ? (

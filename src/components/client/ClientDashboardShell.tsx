@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  Globe,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
@@ -96,8 +97,16 @@ export default function ClientDashboardShell({
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="border-t border-gray-100 p-4">
+      {/* Return to Home + Logout */}
+      <div className="space-y-1 border-t border-gray-100 p-4">
+        <Link
+          href="/"
+          onClick={() => setMobileOpen(false)}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[#15462D] transition-colors hover:bg-emerald-50"
+        >
+          <Globe size={18} />
+          <span>Return to Home</span>
+        </Link>
         <button
           onClick={() => logoutUser()}
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50"

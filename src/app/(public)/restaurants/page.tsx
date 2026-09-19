@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Clock, Heart, Filter, ChevronRight, ChevronLeft, Tag, Sparkles } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Star, Clock, Heart, Filter, ChevronRight, ChevronLeft, Tag, Sparkles, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 // Sample Banner Data
@@ -40,8 +41,16 @@ const PROMO_SLIDES = [
   },
 ];
 
-export default function RestaurantsPage() {
+function RestaurantsPageInner() {
   const { restaurants, isRestaurantsLoading, favorites, toggleFavorite } = useApp();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // UPDATE (restaurant-search fix): the navbar's search box has always
+  // submitted to /restaurants?search=... but this page never read that
+  // query param at all — typing a restaurant name and hitting enter did
+  // nothing. It now filters by name (and cuisine, as a reasonable bonus)
+  // against the real restaurant list.
+  const searchQuery = searchParams.get('search')?.trim() || '';
 
   // Banner State
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -76,11 +85,16 @@ export default function RestaurantsPage() {
 
   // Filter & Sort Logic
   const filteredRestaurants = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return restaurants
       .filter((r) => {
         const matchesRating = r.rating >= minRating;
         const matchesCuisine = selectedCuisine === 'All' || r.cuisines?.includes(selectedCuisine);
-        return matchesRating && matchesCuisine;
+        const matchesSearch =
+          !query ||
+          r.restaurantName.toLowerCase().includes(query) ||
+          r.cuisines?.some((c) => c.toLowerCase().includes(query));
+        return matchesRating && matchesCuisine && matchesSearch;
       })
       .sort((a, b) => {
         if (selectedSort === 'rating') return b.rating - a.rating;
@@ -91,7 +105,7 @@ export default function RestaurantsPage() {
         }
         return 0;
       });
-  }, [restaurants, minRating, selectedCuisine, selectedSort]);
+  }, [restaurants, minRating, selectedCuisine, selectedSort, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#FAF7EE] py-8 lg:py-12">
@@ -101,11 +115,20 @@ export default function RestaurantsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              All Restaurants
+              {searchQuery ? `Results for "${searchQuery}"` : 'All Restaurants'}
             </h1>
-            <p className="text-sm text-gray-600 mt-1 font-medium">
-              Discover top kitchens near you delivered fast
-            </p>
+            {searchQuery ? (
+              <button
+                onClick={() => router.push('/restaurants')}
+                className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white border border-[#E8E2D5] px-3 py-1 text-xs font-bold text-[#15462D] hover:bg-gray-50"
+              >
+                <X size={12} /> Clear search
+              </button>
+            ) : (
+              <p className="text-sm text-gray-600 mt-1 font-medium">
+                Discover top kitchens near you delivered fast
+              </p>
+            )}
           </div>
 
           <button
@@ -293,7 +316,11 @@ export default function RestaurantsPage() {
             ) : filteredRestaurants.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-[#E8E2D5]">
                 <p className="text-base font-semibold text-gray-700">No restaurants found</p>
-                <p className="text-xs text-gray-500 mt-1">Try resetting your filters or selecting a different cuisine.</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {searchQuery
+                    ? `Nothing matched "${searchQuery}". Try a different name or cuisine.`
+                    : 'Try resetting your filters or selecting a different cuisine.'}
+                </p>
               </div>
             ) : (
               // UPDATE (restaurant-card redesign + responsive fix): tightened
@@ -384,5 +411,19 @@ export default function RestaurantsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RestaurantsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#FAF7EE]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#15462D] border-t-transparent" />
+        </div>
+      }
+    >
+      <RestaurantsPageInner />
+    </Suspense>
   );
 }

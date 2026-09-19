@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { verifySessionCookie } from "@/lib/session";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
+import { Restaurant } from "@/models/Restaurant";
 import { MenuItem } from "@/models/MenuItem";
 import { Types } from "mongoose";
 
@@ -38,6 +39,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // UPDATE (menu-visibility fix): items are linked by Restaurant._id, not
+  // User._id — see the matching comment in vendor/menu/create/route.ts.
+  const restaurant = await Restaurant.findOne({ userId: user._id }).lean();
+  if (!restaurant) {
+    return NextResponse.json({ error: "Restaurant profile not found" }, { status: 404 });
+  }
+
   const body = await req.json();
   const { name, category, price, description, image, addons } = body;
 
@@ -52,7 +60,7 @@ export async function PATCH(
   // the filter means one vendor can never edit another vendor's item even
   // by guessing its id.
   const updated = await MenuItem.findOneAndUpdate(
-    { _id: id, vendorId: user._id },
+    { _id: id, vendorId: restaurant._id },
     {
       name,
       category,
