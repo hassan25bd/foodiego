@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Bell,
   HelpCircle,
   Search,
   User,
@@ -15,10 +14,13 @@ import {
   Home,
   Store,
   LoaderCircle,
+  Menu,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useVendorProfile, useUpdateVendorProfile } from "@/hooks/useVendorProfile";
 import { springTransition } from "@/app/(main)/vendor/components/motion";
+import { useVendorMobileNav } from "./VendorMobileNavContext";
+import NotificationBell from "@/components/shared/NotificationBell";
 
 interface VendorHeaderProps {
   userName?: string;
@@ -71,6 +73,7 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
   const initializedFromProfile = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { logoutUser } = useApp();
+  const { open: openMobileNav } = useVendorMobileNav();
   const { data: profile } = useVendorProfile();
   const updateProfile = useUpdateVendorProfile();
 
@@ -117,7 +120,20 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-200/70 bg-white/85 px-4 shadow-sm backdrop-blur-md sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-slate-200/70 bg-white/85 px-4 shadow-sm backdrop-blur-md sm:gap-4 sm:px-6 lg:px-8">
+      {/* UPDATE (responsive fix): opens VendorSidebar's new mobile drawer —
+          previously there was no way at all to reach the sidebar's nav
+          (Orders, Menu, Analytics, Payments, Delivery, Reviews, Support)
+          below the lg breakpoint. */}
+      <button
+        type="button"
+        onClick={openMobileNav}
+        className="shrink-0 rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu size={20} />
+      </button>
+
       <form
         className="flex-1 max-w-md"
         role="search"
@@ -134,17 +150,7 @@ export default function VendorHeader({ userName, userEmail }: VendorHeaderProps)
       </form>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <motion.button
-          type="button"
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.95 }}
-          transition={springTransition}
-          className="relative rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          aria-label="Notifications"
-        >
-          <Bell size={20} />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
-        </motion.button>
+        <NotificationBell />
 
         <motion.button
           type="button"

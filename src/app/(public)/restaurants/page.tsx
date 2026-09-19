@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Clock, Heart, Filter, ChevronRight, ChevronLeft, Tag, Sparkles } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Star, Clock, Heart, Filter, ChevronRight, ChevronLeft, Tag, Sparkles, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 // Sample Banner Data
@@ -40,8 +41,16 @@ const PROMO_SLIDES = [
   },
 ];
 
-export default function RestaurantsPage() {
+function RestaurantsPageInner() {
   const { restaurants, isRestaurantsLoading, favorites, toggleFavorite } = useApp();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // UPDATE (restaurant-search fix): the navbar's search box has always
+  // submitted to /restaurants?search=... but this page never read that
+  // query param at all — typing a restaurant name and hitting enter did
+  // nothing. It now filters by name (and cuisine, as a reasonable bonus)
+  // against the real restaurant list.
+  const searchQuery = searchParams.get('search')?.trim() || '';
 
   // Banner State
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -76,11 +85,16 @@ export default function RestaurantsPage() {
 
   // Filter & Sort Logic
   const filteredRestaurants = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return restaurants
       .filter((r) => {
         const matchesRating = r.rating >= minRating;
         const matchesCuisine = selectedCuisine === 'All' || r.cuisines?.includes(selectedCuisine);
-        return matchesRating && matchesCuisine;
+        const matchesSearch =
+          !query ||
+          r.restaurantName.toLowerCase().includes(query) ||
+          r.cuisines?.some((c) => c.toLowerCase().includes(query));
+        return matchesRating && matchesCuisine && matchesSearch;
       })
       .sort((a, b) => {
         if (selectedSort === 'rating') return b.rating - a.rating;
@@ -91,7 +105,7 @@ export default function RestaurantsPage() {
         }
         return 0;
       });
-  }, [restaurants, minRating, selectedCuisine, selectedSort]);
+  }, [restaurants, minRating, selectedCuisine, selectedSort, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#FAF7EE] py-8 lg:py-12">
@@ -101,11 +115,20 @@ export default function RestaurantsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              All Restaurants
+              {searchQuery ? `Results for "${searchQuery}"` : 'All Restaurants'}
             </h1>
-            <p className="text-sm text-gray-600 mt-1 font-medium">
-              Discover top kitchens near you delivered fast
-            </p>
+            {searchQuery ? (
+              <button
+                onClick={() => router.push('/restaurants')}
+                className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white border border-[#E8E2D5] px-3 py-1 text-xs font-bold text-[#15462D] hover:bg-gray-50"
+              >
+                <X size={12} /> Clear search
+              </button>
+            ) : (
+              <p className="text-sm text-gray-600 mt-1 font-medium">
+                Discover top kitchens near you delivered fast
+              </p>
+            )}
           </div>
 
           <button
@@ -293,23 +316,32 @@ export default function RestaurantsPage() {
             ) : filteredRestaurants.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-[#E8E2D5]">
                 <p className="text-base font-semibold text-gray-700">No restaurants found</p>
-                <p className="text-xs text-gray-500 mt-1">Try resetting your filters or selecting a different cuisine.</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {searchQuery
+                    ? `Nothing matched "${searchQuery}". Try a different name or cuisine.`
+                    : 'Try resetting your filters or selecting a different cuisine.'}
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              // UPDATE (restaurant-card redesign + responsive fix): tightened
+              // to the same compact card language as FoodCard.tsx (smaller
+              // photo, dense info rows, icon-prefixed time/fee), and the grid
+              // now steps 1 -> 2 -> 3 columns so cards stay a sensible size
+              // on tablet/desktop instead of only ever 1 or 2 wide.
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {filteredRestaurants.map((restaurant) => {
                   const isFav = favorites.includes(restaurant.id);
-                  const validImage = restaurant.image && restaurant.image.trim() !== '' 
-                    ? restaurant.image 
+                  const validImage = restaurant.image && restaurant.image.trim() !== ''
+                    ? restaurant.image
                     : '/default-banner.png';
 
                   return (
                     <div
                       key={restaurant.id}
-                      className="group bg-white rounded-3xl border border-[#E8E2D5] overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                      className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-[#E8E2D5] bg-white transition-all duration-300 hover:shadow-lg"
                     >
                       <Link href={`/restaurants/${restaurant.slug}`} className="block relative">
-                        <div className="relative w-full h-48 bg-gray-100 overflow-hidden">
+                        <div className="relative aspect-4/3 w-full overflow-hidden bg-gray-100">
                           <Image
                             src={validImage}
                             alt={restaurant.restaurantName}
@@ -318,9 +350,9 @@ export default function RestaurantsPage() {
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent" />
-                          
+
                           {restaurant.badge && (
-                            <span className="absolute top-3 left-3 bg-[#15462D] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-xs">
+                            <span className="absolute left-2 top-2 rounded-full bg-[#15462D] px-2.5 py-1 text-[10px] font-extrabold uppercase text-white shadow-xs sm:left-3 sm:top-3">
                               {restaurant.badge}
                             </span>
                           )}
@@ -331,43 +363,43 @@ export default function RestaurantsPage() {
                               e.preventDefault();
                               toggleFavorite(restaurant.id);
                             }}
-                            className="absolute top-3 right-3 p-2 rounded-full bg-white/80 backdrop-blur-md hover:bg-white text-gray-700 transition-colors shadow-xs cursor-pointer"
+                            className="absolute right-2 top-2 rounded-full bg-white/85 p-2 text-gray-700 shadow-xs backdrop-blur-md transition-colors hover:bg-white sm:right-3 sm:top-3"
                           >
-                            <Heart size={16} className={isFav ? 'fill-red-500 text-red-500' : ''} />
+                            <Heart size={15} className={isFav ? 'fill-red-500 text-red-500' : ''} />
                           </button>
                         </div>
 
-                        <div className="p-5">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h3 className="text-lg font-black text-slate-900 group-hover:text-[#15462D] transition-colors truncate">
+                        <div className="p-3 sm:p-4">
+                          <div className="mb-1 flex items-start justify-between gap-2">
+                            <h3 className="min-w-0 truncate text-sm font-black text-slate-900 transition-colors group-hover:text-[#15462D] sm:text-base">
                               {restaurant.restaurantName}
                             </h3>
-                            <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/50 shrink-0">
-                              <Star size={13} className="fill-amber-400 text-amber-400" />
+                            <div className="flex shrink-0 items-center gap-1 rounded-full border border-amber-200/50 bg-amber-50 px-2 py-0.5">
+                              <Star size={12} className="fill-amber-400 text-amber-400" />
                               <span className="text-xs font-bold text-gray-900">{restaurant.rating}</span>
                               <span className="text-[10px] text-gray-500">({restaurant.reviewCount})</span>
                             </div>
                           </div>
 
-                          <p className="text-xs text-gray-500 font-medium truncate mb-3">
+                          <p className="mb-2 truncate text-xs font-medium text-gray-500">
                             {restaurant.cuisines?.join(' • ') || 'Various Cuisines'}
                           </p>
 
-                          <div className="flex items-center gap-4 text-xs font-bold text-gray-600 pt-3 border-t border-gray-100">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-100 pt-2 text-[11px] font-bold text-gray-600 sm:text-xs">
                             <span className="flex items-center gap-1">
-                              <Clock size={13} className="text-emerald-800" />
+                              <Clock size={12} className="text-emerald-800" />
                               {restaurant.deliveryTime}
                             </span>
-                            <span>•</span>
+                            <span className="text-gray-300">&middot;</span>
                             <span>Tk {restaurant.deliveryFee} delivery</span>
                           </div>
                         </div>
                       </Link>
 
                       {restaurant.offers && restaurant.offers.length > 0 && (
-                        <div className="bg-[#FAF7EE] px-5 py-2.5 border-t border-[#E8E2D5] flex items-center justify-between text-xs font-bold text-[#15462D]">
-                          <span>🏷️ {restaurant.offers[0].title}</span>
-                          <ChevronRight size={14} />
+                        <div className="flex items-center justify-between gap-2 border-t border-[#E8E2D5] bg-[#FAF7EE] px-3 py-2 text-xs font-bold text-[#15462D] sm:px-4 sm:py-2.5">
+                          <span className="min-w-0 truncate">🏷️ {restaurant.offers[0].title}</span>
+                          <ChevronRight size={14} className="shrink-0" />
                         </div>
                       )}
                     </div>
@@ -379,5 +411,19 @@ export default function RestaurantsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RestaurantsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#FAF7EE]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#15462D] border-t-transparent" />
+        </div>
+      }
+    >
+      <RestaurantsPageInner />
+    </Suspense>
   );
 }

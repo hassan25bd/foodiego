@@ -4,7 +4,13 @@ import { verifySessionCookie } from "@/lib/session";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { Restaurant } from "@/models/Restaurant";
-import { Order } from "@/models/Order";
+import { OrderBooking } from "@/models/OrderBooking";
+
+// UPDATE: switched from the unused `Order` model to `OrderBooking`, the
+// collection the real checkout flow writes to — see
+// src/lib/orderStatusMap.ts for background on why the vendor dashboard's
+// order data source needed this fix. "cancelled" is OrderBooking's
+// equivalent of the old model's "rejected" status.
 
 export async function GET(req: NextRequest) {
   const sessionCookie = req.cookies.get("session")?.value;
@@ -44,10 +50,10 @@ export async function GET(req: NextRequest) {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const weekOrders = await Order.find({
-    merchantId: restaurant._id,
+  const weekOrders = await OrderBooking.find({
+    restaurantId: restaurant._id,
     createdAt: { $gte: weekStart, $lt: weekEnd },
-    status: { $ne: "rejected" }
+    status: { $ne: "cancelled" }
   }).lean();
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
       return created >= dayStart && created < dayEnd;
     });
 
-    const revenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const revenue = dayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
     const orders = dayOrders.length;
 
     return { day, revenue, orders };

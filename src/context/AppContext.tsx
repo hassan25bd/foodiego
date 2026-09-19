@@ -1,10 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { FoodItem } from '@/components/FoodCard';
 import { getClientAuth, hasFirebaseClientConfig } from '@/lib/firebase/client';
 import { logout } from '@/app/(public)/actions/auth';
+import { favoritesApi } from '@/lib/clientApi';
 
 // Type definition for selected options like size or choice modifiers
 export interface SelectedOption {
@@ -108,6 +109,8 @@ interface AppContextType {
     isAuthLoading: boolean;
     restaurants: Restaurant[];
     isRestaurantsLoading: boolean;
+    /** Every real menu item across all open, approved restaurants, flattened into FoodItem shape. */
+    catalogFoodItems: FoodItem[];
     getRestaurantBySlug: (slug: string) => Restaurant | undefined;
     getRestaurantById: (id: string) => Restaurant | undefined;
     addToCart: (food: FoodItem, customization?: CustomizationOptions) => void;
@@ -185,12 +188,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return () => unsubscribe();
     }, []);
 
+    // Once a customer account is logged in, the server copy of their
+    // favorites (backed by MongoDB) becomes the source of truth instead of
+    // this browser's localStorage. Logged-out/guest browsing keeps using
+    // localStorage only, and the call below is a no-op (401) for any
+    // account that isn't a "customer".
+    useEffect(() => {
+        if (!user) return;
+        favoritesApi
+            .list()
+            .then(({ favorites: serverFavorites }) => setFavorites(serverFavorites))
+            .catch(() => {});
+    }, [user]);
+
     // Effect to fetch restaurants from the backend API and map fields correctly
     useEffect(() => {
         const fetchRestaurants = async () => {
             setIsRestaurantsLoading(true);
             try {
-                const res = await fetch('/api/restaurants.json');
+                // UPDATE (real food-catalog fix): this used to read static demo
+                // JSON (public/api/restaurants.json). It now reads real, approved
+                // restaurants + their real menu from MongoDB — see
+                // src/app/api/v1/catalog/restaurants/route.ts. The mapping code
+                // below is unchanged; that route already returns matching field
+                // names (with sensible defaults for anything a seeded restaurant
+                // doesn't have, like reviewCount/badge/offers).
+                const res = await fetch('/api/v1/catalog/restaurants');
 
                 if (!res.ok) {
                     throw new Error('Failed to fetch restaurants');
@@ -267,6 +290,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return restaurants.find((r) => r.id === id);
     };
 
+    // UPDATE (real food-catalog fix): several pages (the homepage's
+    // "Picked for You" section, both Favorites pages) used to fetch static
+    // demo JSON (public/api/foods.json) for their food-item lists, so a
+    // favorited/"picked" item often didn't correspond to anything actually
+    // in the real menu. This flattens the real restaurants/menu data
+    // already loaded above into the same FoodItem shape those pages need,
+    // computed once here instead of duplicated in three different files.
+    const catalogFoodItems: FoodItem[] = useMemo(() => {
+        const items: FoodItem[] = [];
+        for (const restaurant of restaurants) {
+            for (const category of restaurant.menuCategories) {
+                for (const item of category.items) {
+                    items.push({
+                        id: item.id,
+                        name: item.name,
+                        description: item.description,
+                        price: item.price,
+                        rating: restaurant.rating || 4.5,
+                        deliveryTime: restaurant.deliveryTime || '30-40 min',
+                        deliveryFee: `Tk ${restaurant.deliveryFee}`,
+                        restaurantName: restaurant.restaurantName,
+                        cuisine: restaurant.cuisines?.[0] || 'General',
+                        imageUrl: item.image,
+                    });
+                }
+            }
+        }
+        return items;
+    }, [restaurants]);
+
     // Add item to cart or increment quantity if custom configuration matches
     const addToCart = (food: FoodItem, customization?: CustomizationOptions) => {
         const selectedSize = customization?.selectedSize;
@@ -328,13 +381,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     };
 
-    // Toggle restaurant or item in/out of the user's favorites array
+    // Toggle restaurant or item in/out of the user's favorites array.
+    // Updates local state immediately, then persists to the customer's
+    // account server-side (best-effort; reverts on failure). Guests just
+    // keep the localStorage-only copy.
     const toggleFavorite = (id: string) => {
         setFavorites((prevFavorites) =>
             prevFavorites.includes(id)
                 ? prevFavorites.filter((favId) => favId !== id)
                 : [...prevFavorites, id]
         );
+
+        if (!user) return;
+        favoritesApi.toggle(id).catch(() => {
+            // Revert the optimistic update if the server call failed.
+            setFavorites((prevFavorites) =>
+                prevFavorites.includes(id)
+                    ? prevFavorites.filter((favId) => favId !== id)
+                    : [...prevFavorites, id]
+            );
+        });
     };
 
     // Completely clear all contents from the shopping cart
@@ -360,6 +426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 isAuthLoading,
                 restaurants,
                 isRestaurantsLoading,
+                catalogFoodItems,
                 getRestaurantBySlug,
                 getRestaurantById,
                 addToCart,

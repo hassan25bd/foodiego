@@ -7,90 +7,99 @@ import {
   DollarSign,
   MapPin,
   Package,
+  PackageCheck,
   Phone,
   Search,
-  Timer,
+  Truck,
+  LoaderCircle,
   User,
-  ArrowUpRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { motion } from "motion/react";
+import { useMemo, useState, useTransition } from "react";
 import RiderShell from "@/components/rider/RiderShell";
+import { useRiderOrders } from "@/hooks/useRiderOrders";
+import type { RiderOrderSummary } from "@/app/api/v1/rider/orders/route";
+import { markPickedUp, markDelivered } from "@/app/(main)/actions/rider";
+
+// ============================================================
+// UPDATE (rider-dashboard real-data fix): this page used to render a
+// fixed array of fake deliveries plus a hardcoded "Active Delivery" card
+// (always "Burger Joint -> Sarah M., 75%"). It now derives the active
+// delivery and delivery history from this rider's real OrderBooking
+// records (via useRiderOrders()). "Progress %" is derived from how far
+// along the real status enum the order is (pending/confirmed/preparing/
+// out_for_delivery/delivered) since there's no finer-grained tracking.
+// ============================================================
 
 type DeliveryStatus = "In Progress" | "Accepted" | "Completed";
 
-type Delivery = {
-  id: string;
-  restaurant: string;
-  customer: string;
-  pickup: string;
-  delivery: string;
-  distance: string;
-  time: string;
-  payout: string;
-  status: DeliveryStatus;
-};
+function toDeliveryStatus(status: RiderOrderSummary["status"]): DeliveryStatus | "Cancelled" {
+  switch (status) {
+    case "out_for_delivery":
+      return "In Progress";
+    case "delivered":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Accepted";
+  }
+}
 
-const deliveries: Delivery[] = [
-  {
-    id: "ORD-9921",
-    restaurant: "Burger Joint",
-    customer: "Sarah M.",
-    pickup: "Burger Joint",
-    delivery: "89 Lake Street",
-    distance: "5.1 km",
-    time: "28 min",
-    payout: "$12.50",
-    status: "In Progress",
-  },
-  {
-    id: "ORD-9922",
-    restaurant: "Tokyo Noodles",
-    customer: "Emma K.",
-    pickup: "Tokyo Noodles",
-    delivery: "78 Park Road",
-    distance: "2.7 km",
-    time: "15 min",
-    payout: "$7.75",
-    status: "Accepted",
-  },
-  {
-    id: "ORD-9920",
-    restaurant: "Taco House",
-    customer: "David L.",
-    pickup: "Taco House",
-    delivery: "21 Hill Road",
-    distance: "3.9 km",
-    time: "20 min",
-    payout: "$9.50",
-    status: "Completed",
-  },
-  {
-    id: "ORD-9919",
-    restaurant: "Fresh Bowl",
-    customer: "Olivia S.",
-    pickup: "Fresh Bowl",
-    delivery: "55 Green Avenue",
-    distance: "4.1 km",
-    time: "22 min",
-    payout: "$9.00",
-    status: "Completed",
-  },
-  {
-    id: "ORD-9918",
-    restaurant: "Pizza Palace",
-    customer: "James R.",
-    pickup: "Pizza Palace",
-    delivery: "16 Green Road",
-    distance: "3.5 km",
-    time: "19 min",
-    payout: "$8.75",
-    status: "Completed",
-  },
-];
+const STAGES = ["confirmed", "preparing", "ready", "out_for_delivery", "delivered"] as const;
+function progressPercent(status: RiderOrderSummary["status"]) {
+  const idx = STAGES.indexOf(status as (typeof STAGES)[number]);
+  if (idx === -1) return status === "delivered" ? 100 : 0;
+  return Math.round(((idx + 1) / STAGES.length) * 100);
+}
 
 export default function RiderDeliveriesPage() {
+  const { orders: rawOrders, loading, refetch } = useRiderOrders();
   const [search, setSearch] = useState("");
+  const [actionPending, startAction] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // UPDATE (order-lifecycle fix): this page used to be entirely read-only —
+  // a rider could see their active delivery here but had no way to advance
+  // it. Mirrors the same two actions on the main /rider dashboard card.
+  const handlePickedUp = (orderId: string) => {
+    setActionError(null);
+    startAction(async () => {
+      const result = await markPickedUp(orderId);
+      if (result.ok) await refetch();
+      else setActionError(result.message ?? "Could not update this delivery.");
+    });
+  };
+
+  const handleDelivered = (orderId: string) => {
+    setActionError(null);
+    startAction(async () => {
+      const result = await markDelivered(orderId);
+      if (result.ok) await refetch();
+      else setActionError(result.message ?? "Could not update this delivery.");
+    });
+  };
+
+  const activeOrder = useMemo(
+    () => rawOrders.find((o) => o.status !== "delivered" && o.status !== "cancelled"),
+    [rawOrders]
+  );
+
+  const deliveries = useMemo(
+    () =>
+      rawOrders
+        .filter((o) => o.status === "delivered" || o.status === "cancelled")
+        .map((o) => ({
+          id: o._id,
+          restaurant: o.restaurantName,
+          customer: o.customerName,
+          pickup: o.restaurantName,
+          delivery: o.deliveryAddress,
+          payout: `$${o.deliveryFee.toFixed(2)}`,
+          status: toDeliveryStatus(o.status) as "Completed",
+        })),
+    [rawOrders]
+  );
 
   const filteredDeliveries = deliveries.filter((delivery) => {
     const searchText = search.toLowerCase();
@@ -100,6 +109,20 @@ export default function RiderDeliveriesPage() {
       delivery.customer.toLowerCase().includes(searchText)
     );
   });
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayDelivered = rawOrders.filter(
+    (o) => o.status === "delivered" && new Date(o.updatedAt) >= todayStart
+  );
+  const acceptedCount = rawOrders.filter((o) => o.status === "confirmed" || o.status === "preparing").length;
+
+  const deliveryStats = [
+    { icon: <Bike className="h-5 w-5" />, title: "Active Delivery", value: activeOrder ? "1" : "0", description: activeOrder ? "Currently on the way" : "No active delivery", highlight: !!activeOrder },
+    { icon: <Clock3 className="h-5 w-5" />, title: "Accepted", value: String(acceptedCount), description: "Ready to start", highlight: false },
+    { icon: <CheckCircle2 className="h-5 w-5" />, title: "Completed", value: String(todayDelivered.length), description: "Today's completed", highlight: false },
+    { icon: <DollarSign className="h-5 w-5" />, title: "Delivery Earnings", value: `$${todayDelivered.reduce((s, o) => s + (o.deliveryFee || 0), 0).toFixed(2)}`, description: "From today's deliveries", highlight: false },
+  ];
 
   return (
     <RiderShell activePath="/rider/deliveries">
@@ -132,12 +155,6 @@ export default function RiderDeliveriesPage() {
               history.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="text-sm font-medium text-green-700">
-              You&apos;re available
-            </span>
-          </div>
         </motion.section>
 
         {/* STATS */}
@@ -162,7 +179,7 @@ export default function RiderDeliveriesPage() {
               <DeliveryStat
                 icon={stat.icon}
                 title={stat.title}
-                value={stat.value}
+                value={loading ? "—" : stat.value}
                 description={stat.description}
                 highlight={stat.highlight}
               />
@@ -171,117 +188,141 @@ export default function RiderDeliveriesPage() {
         </motion.section>
 
         {/* ACTIVE DELIVERY */}
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.35 }}
-          className="rounded-2xl border border-green-200 bg-white p-6 shadow-sm"
-        >
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                <p className="text-sm font-semibold text-green-600">
-                  Active Delivery
+        {activeOrder && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.35 }}
+            className="rounded-2xl border border-green-200 bg-white p-6 shadow-sm"
+          >
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                  <p className="text-sm font-semibold text-green-600">
+                    Active Delivery
+                  </p>
+                </div>
+                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                  {activeOrder.restaurantName} → {activeOrder.customerName}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Order #{activeOrder._id.slice(-6).toUpperCase()}
                 </p>
               </div>
-              <h2 className="mt-2 text-xl font-bold text-slate-900">
-                Burger Joint → Sarah M.
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">Order #ORD-9921</p>
+              <div className="text-left sm:text-right">
+                <p className="text-xs text-slate-400">Payout</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  ${activeOrder.deliveryFee.toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="text-left sm:text-right">
-              <p className="text-xs text-slate-400">Payout</p>
-              <p className="text-2xl font-bold text-slate-900">$12.50</p>
-            </div>
-          </div>
 
-          {/* ROUTE */}
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div className="rounded-xl bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pickup</p>
-              <div className="mt-3 flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
-                  <MapPin className="h-4 w-4 text-green-600" />
+            {/* ROUTE */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <div className="rounded-xl bg-slate-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pickup</p>
+                <div className="mt-3 flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
+                    <MapPin className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800">{activeOrder.restaurantName}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-slate-800">Burger Joint</p>
-                  <p className="mt-1 text-sm text-slate-500">Downtown Burger Joint</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Delivery</p>
+                <div className="mt-3 flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
+                    <MapPin className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800">{activeOrder.customerName}</p>
+                    <p className="mt-1 text-sm text-slate-500">{activeOrder.deliveryAddress}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Delivery</p>
-              <div className="mt-3 flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
-                  <MapPin className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-800">Sarah M.</p>
-                  <p className="mt-1 text-sm text-slate-500">89 Lake Street</p>
-                </div>
+
+            {activeOrder.deliveryNote && (
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <span className="font-semibold">Delivery note:</span> {activeOrder.deliveryNote}
+              </div>
+            )}
+
+            {/* DELIVERY INFO */}
+            <div className="mt-5 flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2.5">
+                <Bike className="h-4 w-4 text-green-500" />
+                <span className="text-sm font-medium text-green-600">
+                  {activeOrder.status === "out_for_delivery"
+                    ? "On the way"
+                    : activeOrder.status === "ready"
+                    ? "Ready for pickup"
+                    : "Preparing"}
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* DELIVERY INFO */}
-          <div className="mt-5 flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-4 py-2.5">
-              <MapPin className="h-4 w-4 text-slate-400" />
-              <span className="text-sm text-slate-600">5.1 km</span>
+            {/* PROGRESS */}
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-700">Delivery Progress</p>
+                <p className="text-xs font-medium text-green-500">{progressPercent(activeOrder.status)}%</p>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent(activeOrder.status)}%` }}
+                  transition={{ delay: 0.4, duration: 0.8, ease: "easeOut" }}
+                  className="h-full rounded-full bg-green-500"
+                />
+              </div>
+              <div className="mt-3 flex justify-between text-xs text-slate-400">
+                <span>Accepted</span>
+                <span>Preparing</span>
+                <span>Ready</span>
+                <span>On the Way</span>
+                <span>Delivered</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-4 py-2.5">
-              <Timer className="h-4 w-4 text-slate-400" />
-              <span className="text-sm text-slate-600">28 min</span>
-            </div>
-            <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2.5">
-              <Bike className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-600">On the way</span>
-            </div>
-          </div>
 
-          {/* PROGRESS */}
-          <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-700">Delivery Progress</p>
-              <p className="text-xs font-medium text-green-500">75%</p>
+            {/* ACTIONS */}
+            {actionError && <p className="mt-4 text-xs font-medium text-rose-600">{actionError}</p>}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href={`/rider#chat-${activeOrder._id}`}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <Phone className="h-4 w-4" />
+                Contact Customer
+              </a>
+              {activeOrder.status === "ready" && (
+                <button
+                  type="button"
+                  onClick={() => handlePickedUp(activeOrder._id)}
+                  disabled={actionPending}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {actionPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                  Mark Picked Up
+                </button>
+              )}
+              {activeOrder.status === "out_for_delivery" && (
+                <button
+                  type="button"
+                  onClick={() => handleDelivered(activeOrder._id)}
+                  disabled={actionPending}
+                  className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+                >
+                  {actionPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                  Mark Delivered
+                </button>
+              )}
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: "75%" }}
-                transition={{ delay: 0.4, duration: 0.8, ease: "easeOut" }}
-                className="h-full rounded-full bg-green-500"
-              />
-            </div>
-            <div className="mt-3 flex justify-between text-xs text-slate-400">
-              <span>Accepted</span>
-              <span>Picked Up</span>
-              <span className="font-semibold text-green-500">On the Way</span>
-              <span>Delivered</span>
-            </div>
-          </div>
-
-          {/* ACTIONS */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 rounded-lg bg-green-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-600"
-            >
-              View Delivery
-              <ArrowUpRight className="h-4 w-4" />
-            </motion.button>
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              <Phone className="h-4 w-4" />
-              Contact Customer
-            </motion.button>
-          </div>
-        </motion.section>
+          </motion.section>
+        )}
 
         {/* DELIVERY HISTORY */}
         <motion.section
@@ -311,7 +352,9 @@ export default function RiderDeliveriesPage() {
           </div>
 
           {/* List */}
-          {filteredDeliveries.length === 0 ? (
+          {loading ? (
+            <div className="px-6 py-16 text-center text-sm text-slate-400">Loading…</div>
+          ) : filteredDeliveries.length === 0 ? (
             <div className="px-6 py-16 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
                 <Package className="h-6 w-6 text-slate-400" />
@@ -340,12 +383,15 @@ export default function RiderDeliveriesPage() {
   );
 }
 
-const deliveryStats = [
-  { icon: <Bike className="h-5 w-5" />, title: "Active Delivery", value: "1", description: "Currently on the way", highlight: true },
-  { icon: <Clock3 className="h-5 w-5" />, title: "Accepted", value: "1", description: "Ready to start", highlight: false },
-  { icon: <CheckCircle2 className="h-5 w-5" />, title: "Completed", value: "3", description: "Today's completed", highlight: false },
-  { icon: <DollarSign className="h-5 w-5" />, title: "Delivery Earnings", value: "$47.75", description: "From today's deliveries", highlight: false },
-];
+type DisplayDelivery = {
+  id: string;
+  restaurant: string;
+  customer: string;
+  pickup: string;
+  delivery: string;
+  payout: string;
+  status: "Completed" | "Cancelled";
+};
 
 /* DELIVERY STAT */
 function DeliveryStat({
@@ -380,9 +426,7 @@ function DeliveryStat({
 }
 
 /* DELIVERY ROW */
-function DeliveryRow({ delivery }: { delivery: Delivery }) {
-  const isProgress = delivery.status === "In Progress";
-  const isAccepted = delivery.status === "Accepted";
+function DeliveryRow({ delivery }: { delivery: DisplayDelivery }) {
   const isCompleted = delivery.status === "Completed";
 
   return (
@@ -401,19 +445,11 @@ function DeliveryRow({ delivery }: { delivery: Delivery }) {
             <h3 className="font-bold text-slate-900">{delivery.restaurant}</h3>
             <DeliveryStatusBadge status={delivery.status} />
           </div>
-          <p className="mt-1 text-sm text-slate-500">Order #{delivery.id.replace("ORD-", "")}</p>
+          <p className="mt-1 text-sm text-slate-500">Order #{delivery.id.slice(-6).toUpperCase()}</p>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" />
               {delivery.customer}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" />
-              {delivery.distance}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5" />
-              {delivery.time}
             </span>
           </div>
         </div>
@@ -441,56 +477,20 @@ function DeliveryRow({ delivery }: { delivery: Delivery }) {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Payout</p>
           <p className="mt-1 text-xl font-bold text-slate-900">{delivery.payout}</p>
         </div>
-        <p className="text-xs text-slate-400 xl:mt-2">{delivery.distance}</p>
-      </div>
-
-      {/* Action */}
-      <div className="flex items-center gap-2 xl:min-w-37.5 xl:justify-end">
-        {isProgress && (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600"
-          >
-            View Delivery
-            <ArrowUpRight className="h-4 w-4" />
-          </motion.button>
-        )}
-        {isAccepted && (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center justify-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-600 transition hover:bg-green-100"
-          >
-            Start Delivery
-            <ArrowUpRight className="h-4 w-4" />
-          </motion.button>
-        )}
-        {isCompleted && (
-          <button
-            type="button"
-            className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-          >
-            View Details
-            <ArrowUpRight className="h-4 w-4" />
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
 /* DELIVERY STATUS BADGE */
-function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
+function DeliveryStatusBadge({ status }: { status: "Completed" | "Cancelled" }) {
   const styles = {
-    "In Progress": "bg-green-50 text-green-700 border-green-200",
-    Accepted: "bg-blue-50 text-blue-700 border-blue-200",
     Completed: "bg-green-50 text-green-700 border-green-200",
+    Cancelled: "bg-rose-50 text-rose-600 border-rose-200",
   };
   const icons = {
-    "In Progress": <Clock3 className="h-3 w-3" />,
-    Accepted: <Bike className="h-3 w-3" />,
     Completed: <CheckCircle2 className="h-3 w-3" />,
+    Cancelled: <Clock3 className="h-3 w-3" />,
   };
   return (
     <span
