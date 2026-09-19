@@ -359,7 +359,7 @@ export default async function AdminVendorsPage({
                         </td>
 
                         <td className="py-4 px-6 font-semibold text-gray-900">
-                          {stats ? `৳${stats.revenue.toLocaleString()}` : "—"}
+                          {stats ? `$${stats.revenue.toLocaleString()}` : "—"}
                         </td>
 
                         <td className="py-4 px-6">

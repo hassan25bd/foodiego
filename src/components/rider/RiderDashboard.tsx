@@ -268,7 +268,7 @@ export default function RiderDashboard() {
             <StatCard
               icon={<DollarSign className="h-4 w-4" />}
               title="Today's Earnings"
-              value={summary ? `৳${summary.todayEarnings.toLocaleString()}` : "—"}
+              value={summary ? `$${summary.todayEarnings.toLocaleString()}` : "—"}
               text="From delivery fees earned today"
             />
           </motion.div>
@@ -339,7 +339,7 @@ export default function RiderDashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-500">Total</p>
-                    <p className="text-xl font-bold text-slate-900">৳{activeDelivery.totalAmount.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-slate-900">${activeDelivery.totalAmount.toLocaleString()}</p>
                   </div>
                 </div>
 
