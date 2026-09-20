@@ -913,3 +913,16 @@ body {
 .dark .text-black {
   color: var(--d-text);
 }
+
+/* Entrance animation for the 404 page, reusing the fadeSlideIn keyframe above.
+   The reduced-motion opt-out is written here rather than as a Tailwind variant
+   because unlayered rules beat @layer utilities. */
+.animate-fade-slide-in {
+  animation: fadeSlideIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-slide-in {
+    animation: none;
+  }
+}
