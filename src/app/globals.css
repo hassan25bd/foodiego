@@ -926,3 +926,349 @@ body {
     animation: none;
   }
 }
+
+/* ============================================================================
+   Colorblind-safe theme
+   ----------------------------------------------------------------------------
+   Green/amber brand colours are the hardest pair for red-green colour vision
+   deficiency, the most common form. This theme keeps the light theme's layout,
+   surfaces and contrast structure but swaps the brand pair for blue/orange,
+   which stays separable under deuteranopia, protanopia and tritanopia.
+
+   The `dark` ramp and this block are independent: `.dark` is stripped when
+   colorblind mode is applied, so only one set of overrides is ever active.
+   Like the dark overrides, this must come after the utility layers to win on
+   source order.
+   ========================================================================== */
+.colorblind {
+  color-scheme: light;
+
+  /* Greens become blues, keeping the same lightness ramp so the tint/shade
+     relationships the UI relies on (soft chip vs solid button) still hold. */
+  --color-emerald-50: #eff6ff;
+  --color-emerald-100: #dbeafe;
+  --color-emerald-200: #bfdbfe;
+  --color-emerald-300: #93c5fd;
+  --color-emerald-400: #60a5fa;
+  --color-emerald-500: #3b82f6;
+  --color-emerald-600: #2563eb;
+  --color-emerald-700: #1d4ed8;
+  --color-emerald-800: #1e40af;
+  --color-emerald-900: #1e3a8a;
+  --color-emerald-950: #172554;
+
+  --color-green-50: #eff6ff;
+  --color-green-100: #dbeafe;
+  --color-green-200: #bfdbfe;
+  --color-green-300: #93c5fd;
+  --color-green-400: #60a5fa;
+  --color-green-500: #3b82f6;
+  --color-green-600: #2563eb;
+  --color-green-700: #1d4ed8;
+  --color-green-800: #1e40af;
+  --color-green-900: #1e3a8a;
+
+  --color-teal-50: #ecfeff;
+  --color-teal-200: #a5f3fc;
+  --color-teal-400: #22d3ee;
+  --color-teal-500: #06b6d4;
+  --color-teal-600: #0891b2;
+  --color-teal-700: #0e7490;
+
+  /* Ambers become oranges — warmer, and further from the new blue primary. */
+  --color-amber-50: #fff7ed;
+  --color-amber-100: #ffedd5;
+  --color-amber-200: #fed7aa;
+  --color-amber-300: #fdba74;
+  --color-amber-400: #fb923c;
+  --color-amber-500: #f97316;
+  --color-amber-600: #ea580c;
+  --color-amber-700: #c2410c;
+  --color-amber-800: #9a3412;
+  --color-amber-900: #7c2d12;
+
+  --color-yellow-200: #fde68a;
+  --color-yellow-300: #fcd34d;
+  --color-yellow-400: #fbbf24;
+  --color-yellow-600: #d97706;
+  --color-yellow-700: #b45309;
+
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+
+  /* The nav bar paints itself from variables (it cannot use utility classes
+     because inline styles beat them) — keep those in step with the theme. */
+  --nav-bg: rgba(250, 247, 238, 0.7);
+  --nav-bg-scrolled: rgba(250, 247, 238, 0.85);
+  --nav-border: rgba(232, 226, 213, 0.3);
+  --nav-border-scrolled: rgba(232, 226, 213, 0.6);
+  --nav-shadow: rgba(30, 58, 138, 0.08);
+}
+
+/* Arbitrary-hex brand colours actually in use (86 utilities). */
+.colorblind .accent-\[\#15462D\] {
+  accent-color: #1e3a8a;
+}
+.colorblind .bg-\[\#059669\] {
+  background-color: #3b82f6;
+}
+.colorblind .bg-\[\#065f46\] {
+  background-color: #1e40af;
+}
+.colorblind .bg-\[\#0d9488\] {
+  background-color: #3b82f6;
+}
+.colorblind .bg-\[\#103A27\] {
+  background-color: #172554;
+}
+.colorblind .bg-\[\#10B981\] {
+  background-color: #60a5fa;
+}
+.colorblind .bg-\[\#113220\] {
+  background-color: #172554;
+}
+.colorblind .bg-\[\#124734\] {
+  background-color: #1e3a8a;
+}
+.colorblind .bg-\[\#14532D\] {
+  background-color: #1e40af;
+}
+.colorblind .bg-\[\#15462D\] {
+  background-color: #1e3a8a;
+}
+.colorblind .bg-\[\#15462d\] {
+  background-color: #1e3a8a;
+}
+.colorblind .bg-\[\#1B5A3A\] {
+  background-color: #1e40af;
+}
+.colorblind .bg-\[\#D1FAE5\] {
+  background-color: #dbeafe;
+}
+.colorblind .bg-\[\#F0FDF4\] {
+  background-color: #eff6ff;
+}
+.colorblind .bg-\[\#F49D37\] {
+  background-color: #ea580c;
+}
+.colorblind .bg-\[\#F6A429\] {
+  background-color: #fb923c;
+}
+.colorblind .border-\[\#065f46\] {
+  border-color: #1e40af;
+}
+.colorblind .border-\[\#0d9488\] {
+  border-color: #3b82f6;
+}
+.colorblind .border-\[\#10B981\] {
+  border-color: #60a5fa;
+}
+.colorblind .border-\[\#113220\] {
+  border-color: #172554;
+}
+.colorblind .border-\[\#124734\] {
+  border-color: #1e3a8a;
+}
+.colorblind .border-\[\#15462D\] {
+  border-color: #1e3a8a;
+}
+.colorblind .border-\[\#15462d\] {
+  border-color: #1e3a8a;
+}
+.colorblind .fill-\[\#F49D37\] {
+  fill: #ea580c;
+}
+.colorblind .focus-visible\:ring-\[\#124734\]:focus-visible {
+  --tw-ring-color: #1e3a8a;
+}
+.colorblind .focus\:border-\[\#065f46\]:focus {
+  border-color: #1e40af;
+}
+.colorblind .focus\:border-\[\#0d9488\]:focus {
+  border-color: #3b82f6;
+}
+.colorblind .focus\:border-\[\#10B981\]:focus {
+  border-color: #60a5fa;
+}
+.colorblind .focus\:border-\[\#124734\]:focus {
+  border-color: #1e3a8a;
+}
+.colorblind .focus\:border-\[\#15462D\]:focus {
+  border-color: #1e3a8a;
+}
+.colorblind .focus\:ring-\[\#065f46\]:focus {
+  --tw-ring-color: #1e40af;
+}
+.colorblind .focus\:ring-\[\#0d9488\]:focus {
+  --tw-ring-color: #3b82f6;
+}
+.colorblind .focus\:ring-\[\#10B981\]:focus {
+  --tw-ring-color: #60a5fa;
+}
+.colorblind .focus\:ring-\[\#124734\]:focus {
+  --tw-ring-color: #1e3a8a;
+}
+.colorblind .focus\:ring-\[\#15462D\]:focus {
+  --tw-ring-color: #1e3a8a;
+}
+.colorblind .from-\[\#103A27\] {
+  --tw-gradient-from: #172554;
+}
+.colorblind .from-\[\#124734\] {
+  --tw-gradient-from: #1e3a8a;
+}
+.colorblind .from-\[\#15462D\] {
+  --tw-gradient-from: #1e3a8a;
+}
+.colorblind .from-\[\#ECFDF3\] {
+  --tw-gradient-from: #eff6ff;
+}
+.colorblind .group:hover .group-hover\:bg-\[\#15462D\] {
+  background-color: #1e3a8a;
+}
+.colorblind .group:hover .group-hover\:text-\[\#15462D\] {
+  color: #1e3a8a;
+}
+.colorblind .hover\:bg-\[\#044e38\]:hover {
+  background-color: #1e3a8a;
+}
+.colorblind .hover\:bg-\[\#047857\]:hover {
+  background-color: #2563eb;
+}
+.colorblind .hover\:bg-\[\#059669\]:hover {
+  background-color: #3b82f6;
+}
+.colorblind .hover\:bg-\[\#0b7c72\]:hover {
+  background-color: #2563eb;
+}
+.colorblind .hover\:bg-\[\#0d3527\]:hover {
+  background-color: #172554;
+}
+.colorblind .hover\:bg-\[\#0e3320\]:hover {
+  background-color: #172554;
+}
+.colorblind .hover\:bg-\[\#103b26\]:hover {
+  background-color: #172554;
+}
+.colorblind .hover\:bg-\[\#124734\]:hover {
+  background-color: #1e3a8a;
+}
+.colorblind .hover\:bg-\[\#15462D\]:hover {
+  background-color: #1e3a8a;
+}
+.colorblind .hover\:bg-\[\#176044\]:hover {
+  background-color: #1d4ed8;
+}
+.colorblind .hover\:bg-\[\#1a4d31\]:hover {
+  background-color: #1e3a8a;
+}
+.colorblind .hover\:bg-\[\#1a5c3a\]:hover {
+  background-color: #1e40af;
+}
+.colorblind .hover\:bg-\[\#1d6b48\]:hover {
+  background-color: #1d4ed8;
+}
+.colorblind .hover\:bg-\[\#e0931f\]:hover {
+  background-color: #f97316;
+}
+.colorblind .hover\:border-\[\#10B981\]:hover {
+  border-color: #60a5fa;
+}
+.colorblind .hover\:border-\[\#124734\]:hover {
+  border-color: #1e3a8a;
+}
+.colorblind .hover\:border-\[\#15462D\]:hover {
+  border-color: #1e3a8a;
+}
+.colorblind .hover\:shadow-\[\#124734\]:hover {
+  --tw-shadow-color: #1e3a8a;
+}
+.colorblind .hover\:text-\[\#059669\]:hover {
+  color: #3b82f6;
+}
+.colorblind .hover\:text-\[\#103A27\]:hover {
+  color: #172554;
+}
+.colorblind .hover\:text-\[\#10B981\]:hover {
+  color: #60a5fa;
+}
+.colorblind .hover\:text-\[\#124734\]:hover {
+  color: #1e3a8a;
+}
+.colorblind .hover\:text-\[\#15462D\]:hover {
+  color: #1e3a8a;
+}
+.colorblind .hover\:text-\[\#1a4d31\]:hover {
+  color: #1e3a8a;
+}
+.colorblind .hover\:text-\[\#F49D37\]:hover {
+  color: #ea580c;
+}
+.colorblind .ring-\[\#124734\] {
+  --tw-ring-color: #1e3a8a;
+}
+.colorblind .shadow-\[\#10B981\] {
+  --tw-shadow-color: #60a5fa;
+}
+.colorblind .shadow-\[\#113220\] {
+  --tw-shadow-color: #172554;
+}
+.colorblind .text-\[\#059669\] {
+  color: #3b82f6;
+}
+.colorblind .text-\[\#065f46\] {
+  color: #1e40af;
+}
+.colorblind .text-\[\#0d9488\] {
+  color: #3b82f6;
+}
+.colorblind .text-\[\#10B981\] {
+  color: #60a5fa;
+}
+.colorblind .text-\[\#113220\] {
+  color: #172554;
+}
+.colorblind .text-\[\#123B27\] {
+  color: #172554;
+}
+.colorblind .text-\[\#124734\] {
+  color: #1e3a8a;
+}
+.colorblind .text-\[\#15462D\] {
+  color: #1e3a8a;
+}
+.colorblind .text-\[\#15462d\] {
+  color: #1e3a8a;
+}
+.colorblind .text-\[\#F49D37\] {
+  color: #ea580c;
+}
+.colorblind .text-\[\#F6A429\] {
+  color: #c2410c;
+}
+.colorblind .to-\[\#1d6b48\] {
+  --tw-gradient-to: #1d4ed8;
+}
+.colorblind .to-\[\#1e5d3c\] {
+  --tw-gradient-to: #1e40af;
+}
+.colorblind .to-\[\#F6A429\] {
+  --tw-gradient-to: #fb923c;
+}
+.colorblind .via-\[\#15462D\] {
+  --tw-gradient-via: #1e3a8a;
+}
+.colorblind .via-\[\#176044\] {
+  --tw-gradient-via: #1d4ed8;
+}
+.colorblind .via-\[\#1d6b48\] {
+  --tw-gradient-via: #1d4ed8;
+}
+
+/* Accent text inside the near-black summary panel stays light — the value
+   the rest of the page uses would be unreadable there. */
+.colorblind .bg-\[\#113220\] .text-\[\#F6A429\] {
+  color: #fb923c;
+}
