@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "@/components/Providers";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,6 +39,10 @@ export default async function RootLayout({
           causing every page to horizontally scroll ~1 drawer-width past
           the real content on mobile. */}
       <body className="min-h-full flex flex-col overflow-x-hidden" suppressHydrationWarning>
+        {/* Applies the stored/system theme before the rest of the body renders, so
+            the first paint is already themed instead of flashing light. React
+            tolerates the resulting class mismatch via suppressHydrationWarning. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Providers>
           {children}
         </Providers>
