@@ -24,6 +24,7 @@ import { useApp } from "@/context/AppContext";
 import LogoText from "./LogoText";
 import CartDrawer from "@/components/client/CartDrawer";
 import NotificationBell from "@/components/shared/NotificationBell";
+import ThemeToggle from "@/components/shared/ThemeToggle";
 
 const springSlow: Transition = { type: "spring", stiffness: 300, damping: 28 };
 const fadeDuration: Transition = { duration: 0.25, ease: "easeOut" };
@@ -193,9 +194,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           transition={{ ...springSlow, delay: 0.2 }}
           className="sticky top-0 z-50 w-full transition-all duration-300"
           style={{
-            background: isScrolled
-              ? "rgba(250, 247, 238, 0.85)"
-              : "rgba(250, 247, 238, 0.7)",
+            /* Colour values come from CSS variables (globals.css) so the bar
+               follows the active theme. Inline styles cannot be overridden by a
+               stylesheet, so these cannot be plain utility classes. */
+            background: isScrolled ? "var(--nav-bg-scrolled)" : "var(--nav-bg)",
             backdropFilter: isScrolled
               ? "blur(20px) saturate(1.5)"
               : "blur(12px) saturate(1.2)",
@@ -203,10 +205,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               ? "blur(20px) saturate(1.5)"
               : "blur(12px) saturate(1.2)",
             borderBottom: isScrolled
-              ? "1px solid rgba(232, 226, 213, 0.6)"
-              : "1px solid rgba(232, 226, 213, 0.3)",
+              ? "1px solid var(--nav-border-scrolled)"
+              : "1px solid var(--nav-border)",
             boxShadow: isScrolled
-              ? "0 4px 30px rgba(21, 70, 45, 0.08)"
+              ? "0 4px 30px var(--nav-shadow)"
               : "none",
           }}
         >
@@ -285,6 +287,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Right: Actions */}
             <div className="flex items-center gap-4 sm:gap-5 shrink-0">
+              {/* Light / dark switch */}
+              <ThemeToggle />
+
               {/* Cart */}
               <motion.button
                 onClick={() => setIsCartOpen(true)}
