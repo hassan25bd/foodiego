@@ -9,6 +9,7 @@ import HowItWorksSection from "@/components/HowItWorks";
 import FAQSection from "@/components/FAQ";
 import Footer from "@/components/Share/Footer";
 import AIAssistantWidget from "@/components/AIAssistantWidget";
+import AppLoader from "@/components/AppLoader";
 import { getOptionalSession } from "@/lib/dal";
 
 
@@ -18,18 +19,20 @@ export default async function Home() {
   const session = await getOptionalSession();
 
   return (
-    <main className="flex-1 bg-[#FAF7EE]" suppressHydrationWarning>
-      <Navbar user={session ? { name: session.name, role: session.role } : null} />
-      <Hero />
-      <CloudKitchens />
-      <WhatAreYouCraving />
-      <PickedForYouSection />
-      <SpecialOffers />
-      <AIRecommendation />
-      <HowItWorksSection />
-      <FAQSection />
-      <Footer />
-      <AIAssistantWidget />
-    </main>
+    <AppLoader>
+      <main className="flex-1 bg-[#FAF7EE]" suppressHydrationWarning>
+        <Navbar user={session ? { name: session.name, role: session.role } : null} />
+        <Hero />
+        <WhatAreYouCraving />
+        <PickedForYouSection />
+        <SpecialOffers />
+        <AIRecommendation />
+        <CloudKitchens />
+        <HowItWorksSection />
+        <FAQSection />
+        <Footer />
+        <AIAssistantWidget />
+      </main>
+    </AppLoader>
   );
 }

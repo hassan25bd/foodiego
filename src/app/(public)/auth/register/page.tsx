@@ -456,7 +456,28 @@ function RegisterFormContent() {
         </form>
       )}
 
-      <motion.p variants={itemVariants} className="mt-7 text-center text-sm text-gray-500">
+      <div className="mt-7 grid grid-cols-2 gap-3">
+        {ROLE_OPTIONS.filter((option) => option.value !== "customer").map((option) => {
+          const Icon = option.icon;
+          const isActive = option.value === role;
+          return (
+            <Link
+              key={option.value}
+              href={`/auth/register?role=${option.value}${redirectTo ? `&redirect=${encodeURIComponent(redirectTo)}` : ""}`}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors ${
+                isActive
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50"
+              }`}
+            >
+              <Icon size={16} />
+              <span>Sign up as a {option.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <motion.p variants={itemVariants} className="mt-5 text-center text-sm text-gray-500">
         Already have an account?{" "}
         <Link href="/auth/login" className="font-semibold text-emerald-600 hover:underline">
           Sign in
